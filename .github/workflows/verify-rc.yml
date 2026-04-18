@@ -115,7 +115,12 @@ jobs:
             echo "sdkmanager not found under $ANDROID_SDK_ROOT" >&2
             exit 1
           fi
-          yes | "$SDKMANAGER_BIN" --licenses >/dev/null
+          set +o pipefail
+          if ! yes | "$SDKMANAGER_BIN" --licenses >/dev/null; then
+            echo "Failed to accept Android SDK licenses" >&2
+            exit 1
+          fi
+          set -o pipefail
 
       - name: Provision Device Pool
         if: steps.schedule_gate.outputs.enabled == 'true'
