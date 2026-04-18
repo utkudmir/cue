@@ -24,10 +24,13 @@ final class IOSAppViewModel: ObservableObject {
     @Published var isLoadingDiagnosticsPreview = false
     @Published var isRequestingNotifications = false
     @Published var errorMessage: String?
+    @Published var infoMessage: String?
     @Published var diagnosticsPreview: String?
     @Published var userCode: String?
     @Published var verificationURL: String?
     @Published var directVerificationURL: String?
+    @Published var authorizationExpiresAt: Kotlinx_datetimeInstant?
+    @Published var authorizationPollIntervalSeconds: Int64?
     @Published var authorizationBrowserTarget: AuthorizationBrowserTarget?
     @Published var accountStatus: AccountStatus?
     @Published var scheduledReminders: [ScheduledReminder] = []
@@ -65,39 +68,43 @@ final class IOSAppViewModel: ObservableObject {
             }
         } catch {
             isCheckingSession = false
-            errorMessage = presentableMessage(for: error)
+            showError(error)
         }
     }
 
     func startAuthorization() {
         pollingTask?.cancel()
+        clearMessages()
+        clearAuthorizationSession()
         Task {
             do {
                 let session = try await graph.controller.startAuthorization()
                 userCode = session.userCode
                 verificationURL = session.verificationUrl
                 directVerificationURL = session.directVerificationUrl
+                authorizationExpiresAt = session.expiresAt
+                authorizationPollIntervalSeconds = session.pollIntervalSeconds
                 if let browserURL = URL(string: session.directVerificationUrl ?? session.verificationUrl) {
                     authorizationBrowserTarget = AuthorizationBrowserTarget(url: browserURL)
                 }
                 pollAuthorization(interval: session.pollIntervalSeconds)
             } catch {
-                errorMessage = presentableMessage(for: error)
+                if error is CancellationError { return }
+                clearAuthorizationSession()
+                showError(error)
             }
         }
     }
 
     func cancelAuthorization() {
         pollingTask?.cancel()
-        userCode = nil
-        verificationURL = nil
-        directVerificationURL = nil
-        authorizationBrowserTarget = nil
+        clearAuthorizationSession()
     }
 
     func refreshAccount() async {
         isRefreshing = true
         defer { isRefreshing = false }
+        errorMessage = nil
         do {
             await refreshNotificationPermissionState()
             reminderConfig = try await graph.controller.getReminderConfigSnapshot()
@@ -105,7 +112,7 @@ final class IOSAppViewModel: ObservableObject {
             _ = try await graph.controller.syncReminders()
             scheduledReminders = try await graph.controller.previewReminders()
         } catch {
-            errorMessage = presentableMessage(for: error)
+            showError(error)
         }
     }
 
@@ -113,16 +120,23 @@ final class IOSAppViewModel: ObservableObject {
         Task {
             isRequestingNotifications = true
             defer { isRequestingNotifications = false }
+            clearMessages()
             do {
-                _ = try await graph.controller.requestNotificationPermission()
+                let permissionResult = try await graph.controller.requestNotificationPermission()
+                let granted = permissionResult.boolValue
                 await refreshNotificationPermissionState()
                 if isAuthenticated {
                     _ = try await graph.controller.syncReminders()
                     scheduledReminders = try await graph.controller.previewReminders()
                 }
+                if granted {
+                    infoMessage = "Notifications enabled."
+                } else {
+                    infoMessage = "Notifications remain disabled. Open system settings if you want reminder alerts."
+                }
             } catch {
                 await refreshNotificationPermissionState()
-                errorMessage = presentableMessage(for: error)
+                showError(error)
             }
         }
     }
@@ -136,11 +150,12 @@ final class IOSAppViewModel: ObservableObject {
         Task {
             isExporting = true
             defer { isExporting = false }
+            clearMessages()
             do {
                 let file = try await graph.controller.exportDiagnostics()
-                errorMessage = "Diagnostics exported to \(file.location)"
+                infoMessage = "Diagnostics exported to \(file.location)"
             } catch {
-                errorMessage = presentableMessage(for: error)
+                showError(error)
             }
         }
     }
@@ -150,16 +165,19 @@ final class IOSAppViewModel: ObservableObject {
         Task {
             isLoadingDiagnosticsPreview = true
             defer { isLoadingDiagnosticsPreview = false }
+            errorMessage = nil
             do {
                 diagnosticsPreview = try await graph.controller.previewDiagnostics()
             } catch {
-                errorMessage = presentableMessage(for: error)
+                showError(error)
             }
         }
     }
 
     func disconnect() {
         pollingTask?.cancel()
+        clearMessages()
+        clearAuthorizationSession()
         Task {
             do {
                 try await graph.controller.disconnect()
@@ -168,12 +186,10 @@ final class IOSAppViewModel: ObservableObject {
                 diagnosticsPreview = nil
                 scheduledReminders = []
                 reminderConfig = try await graph.controller.getReminderConfigSnapshot()
-                userCode = nil
-                verificationURL = nil
-                directVerificationURL = nil
-                authorizationBrowserTarget = nil
+                clearAuthorizationSession()
+                infoMessage = "Disconnected from Real-Debrid."
             } catch {
-                errorMessage = presentableMessage(for: error)
+                showError(error)
             }
         }
     }
@@ -257,30 +273,33 @@ final class IOSAppViewModel: ObservableObject {
                         try? await Task.sleep(for: .seconds(Double(interval)))
                     case is AuthPollResultAuthorized:
                         isAuthenticated = true
-                        userCode = nil
-                        verificationURL = nil
-                        directVerificationURL = nil
-                        authorizationBrowserTarget = nil
+                        clearAuthorizationSession()
+                        infoMessage = "Authorization completed."
                         await refreshAccount()
                         return
                     case is AuthPollResultExpired:
-                        authorizationBrowserTarget = nil
-                        errorMessage = "The device authorization session expired."
+                        clearAuthorizationSession()
+                        showErrorMessage("The device authorization session expired.")
                         return
                     case is AuthPollResultDenied:
-                        authorizationBrowserTarget = nil
-                        errorMessage = "Real-Debrid denied the authorization request."
+                        clearAuthorizationSession()
+                        showErrorMessage("Real-Debrid denied the authorization request.")
                         return
                     case let failure as AuthPollResultFailure:
-                        authorizationBrowserTarget = nil
-                        errorMessage = failure.message
+                        clearAuthorizationSession()
+                        showErrorMessage(failure.message)
                         return
                     default:
-                        errorMessage = "Unexpected authorization state."
+                        clearAuthorizationSession()
+                        showErrorMessage("Unexpected authorization state.")
                         return
                     }
                 } catch {
-                    errorMessage = presentableMessage(for: error)
+                    if error is CancellationError || Task.isCancelled {
+                        return
+                    }
+                    clearAuthorizationSession()
+                    showError(error)
                     return
                 }
             }
@@ -305,14 +324,41 @@ final class IOSAppViewModel: ObservableObject {
         reminderConfig = updated
         Task {
             do {
+                errorMessage = nil
                 try await graph.controller.updateReminderConfigSnapshot(snapshot: updated)
                 if isAuthenticated {
-                    await refreshAccount()
+                    await refreshNotificationPermissionState()
+                    _ = try await graph.controller.syncReminders()
+                    scheduledReminders = try await graph.controller.previewReminders()
                 }
             } catch {
-                errorMessage = presentableMessage(for: error)
+                showError(error)
             }
         }
+    }
+
+    private func clearAuthorizationSession() {
+        userCode = nil
+        verificationURL = nil
+        directVerificationURL = nil
+        authorizationExpiresAt = nil
+        authorizationPollIntervalSeconds = nil
+        authorizationBrowserTarget = nil
+    }
+
+    private func clearMessages() {
+        errorMessage = nil
+        infoMessage = nil
+    }
+
+    private func showError(_ error: Error) {
+        infoMessage = nil
+        errorMessage = presentableMessage(for: error)
+    }
+
+    private func showErrorMessage(_ message: String) {
+        infoMessage = nil
+        errorMessage = message
     }
 
     private func presentableMessage(for error: Error) -> String {

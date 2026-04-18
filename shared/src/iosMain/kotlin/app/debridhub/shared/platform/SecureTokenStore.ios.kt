@@ -32,6 +32,7 @@ import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
 import platform.Security.SecItemUpdate
 import platform.Security.errSecItemNotFound
+import platform.Security.errSecParam
 import platform.Security.errSecSuccess
 import platform.Security.kSecAttrAccount
 import platform.Security.kSecAttrAccessible
@@ -104,6 +105,10 @@ class SecureTokenStoreImpl(
             when (status) {
                 errSecSuccess -> (result.ptr.pointed.value as? NSData)?.toUtf8String()
                 errSecItemNotFound -> null
+                errSecParam -> {
+                    deleteKeychainValueSilently()
+                    null
+                }
                 else -> throw IllegalStateException("Unable to read auth state from iOS Keychain (status=$status).")
             }
         }
@@ -124,22 +129,15 @@ class SecureTokenStoreImpl(
             }
         }
 
+        if (updateStatus == errSecParam) {
+            deleteKeychainValueSilently()
+            addKeychainValue(data)
+            return
+        }
+
         when (updateStatus) {
             errSecSuccess -> return
-            errSecItemNotFound -> {
-                val addStatus = withKeychainDictionary(
-                    kSecClass to kSecClassGenericPassword,
-                    kSecAttrService to KEYCHAIN_SERVICE,
-                    kSecAttrAccount to KEYCHAIN_ACCOUNT,
-                    kSecAttrAccessible to kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-                    kSecValueData to data
-                ) { addQuery ->
-                    SecItemAdd(addQuery, null)
-                }
-                if (addStatus != errSecSuccess) {
-                    throw IllegalStateException("Unable to write auth state to iOS Keychain (status=$addStatus).")
-                }
-            }
+            errSecItemNotFound -> addKeychainValue(data)
             else -> throw IllegalStateException("Unable to update auth state in iOS Keychain (status=$updateStatus).")
         }
     }
@@ -154,6 +152,25 @@ class SecureTokenStoreImpl(
         }
         if (status != errSecSuccess && status != errSecItemNotFound) {
             throw IllegalStateException("Unable to clear auth state from iOS Keychain (status=$status).")
+        }
+    }
+
+    private fun deleteKeychainValueSilently() {
+        runCatching { deleteKeychainValue() }
+    }
+
+    private fun addKeychainValue(data: NSData) {
+        val addStatus = withKeychainDictionary(
+            kSecClass to kSecClassGenericPassword,
+            kSecAttrService to KEYCHAIN_SERVICE,
+            kSecAttrAccount to KEYCHAIN_ACCOUNT,
+            kSecAttrAccessible to kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecValueData to data
+        ) { addQuery ->
+            SecItemAdd(addQuery, null)
+        }
+        if (addStatus != errSecSuccess) {
+            throw IllegalStateException("Unable to write auth state to iOS Keychain (status=$addStatus).")
         }
     }
 

@@ -48,6 +48,7 @@ data class DebridHubUiState(
     val scheduledReminders: List<ScheduledReminder> = emptyList(),
     val reminderConfig: ReminderConfig = ReminderConfig(),
     val notificationPermissionState: NotificationPermissionUiState = NotificationPermissionUiState.Unknown,
+    val infoMessage: String? = null,
     val errorMessage: String? = null
 )
 
@@ -55,7 +56,6 @@ sealed interface DebridHubEvent {
     data class OpenUrl(val url: String) : DebridHubEvent
     data class ShareDiagnostics(val displayName: String, val location: String) : DebridHubEvent
     data object RequestNotificationPermission : DebridHubEvent
-    data class Message(val value: String) : DebridHubEvent
 }
 
 class DebridHubViewModel(
@@ -123,7 +123,8 @@ class DebridHubViewModel(
                     _uiState.update {
                         it.copy(
                             onboarding = OnboardingUiState(),
-                            errorMessage = throwable.presentableMessage("Unable to start authorization.")
+                            errorMessage = throwable.presentableMessage("Unable to start authorization."),
+                            infoMessage = null
                         )
                     }
                 }
@@ -153,7 +154,8 @@ class DebridHubViewModel(
                     _uiState.update {
                         it.copy(
                             isRefreshingAccount = false,
-                            errorMessage = throwable.presentableMessage("Unable to refresh account status.")
+                            errorMessage = throwable.presentableMessage("Unable to refresh account status."),
+                            infoMessage = null
                         )
                     }
                 }
@@ -165,11 +167,11 @@ class DebridHubViewModel(
             val notificationsEnabled = notificationScheduler.areNotificationsEnabled()
             _uiState.update { it.copy(notificationPermissionState = notificationsEnabled.toPermissionState()) }
             if (!granted) {
-                _events.emit(DebridHubEvent.Message("Notifications remain disabled. Open system settings if you want reminder alerts."))
+                showInfo("Notifications remain disabled. Open system settings if you want reminder alerts.")
                 _uiState.value.accountStatus?.let { refreshReminderPreview(it) }
                 return@launch
             }
-            _events.emit(DebridHubEvent.Message("Notifications enabled."))
+            showInfo("Notifications enabled.")
             _uiState.value.accountStatus?.let { syncReminders(it) }
         }
     }
@@ -179,7 +181,7 @@ class DebridHubViewModel(
             val notificationsEnabled = notificationScheduler.areNotificationsEnabled()
             _uiState.update { it.copy(notificationPermissionState = notificationsEnabled.toPermissionState()) }
             if (notificationsEnabled) {
-                _events.emit(DebridHubEvent.Message("Notifications are already enabled."))
+                showInfo("Notifications are already enabled.")
                 _uiState.value.accountStatus?.let { syncReminders(it) }
             } else {
                 _events.emit(DebridHubEvent.RequestNotificationPermission)
@@ -211,6 +213,7 @@ class DebridHubViewModel(
             _uiState.update { it.copy(isExportingDiagnostics = true) }
             exportDiagnosticsUseCase()
                 .onSuccess { exportedFile ->
+                    showInfo("Diagnostics exported to ${exportedFile.location}")
                     _events.emit(
                         DebridHubEvent.ShareDiagnostics(
                             displayName = exportedFile.displayName,
@@ -219,11 +222,12 @@ class DebridHubViewModel(
                     )
                 }
                 .onFailure { throwable ->
-                    _events.emit(
-                        DebridHubEvent.Message(
-                            throwable.presentableMessage("Unable to export diagnostics.")
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = throwable.presentableMessage("Unable to export diagnostics."),
+                            infoMessage = null
                         )
-                    )
+                    }
                 }
             _uiState.update { it.copy(isExportingDiagnostics = false) }
         }
@@ -246,7 +250,8 @@ class DebridHubViewModel(
                     _uiState.update {
                         it.copy(
                             isLoadingDiagnosticsPreview = false,
-                            errorMessage = throwable.presentableMessage("Unable to load diagnostics preview.")
+                            errorMessage = throwable.presentableMessage("Unable to load diagnostics preview."),
+                            infoMessage = null
                         )
                     }
                 }
@@ -260,9 +265,9 @@ class DebridHubViewModel(
             reminderRepository.cancelReminders()
             _uiState.value = DebridHubUiState(
                 checkingSession = false,
-                reminderConfig = reminderRepository.getConfig()
+                reminderConfig = reminderRepository.getConfig(),
+                infoMessage = "Disconnected from Real-Debrid."
             )
-            _events.emit(DebridHubEvent.Message("Disconnected from Real-Debrid."))
         }
     }
 
@@ -276,10 +281,11 @@ class DebridHubViewModel(
                         _uiState.update {
                             it.copy(
                                 isAuthenticated = true,
-                                onboarding = OnboardingUiState()
+                                onboarding = OnboardingUiState(),
+                                infoMessage = "Authorization completed.",
+                                errorMessage = null
                             )
                         }
-                        _events.emit(DebridHubEvent.Message("Authorization completed."))
                         refreshAccountStatus()
                         return@launch
                     }
@@ -287,7 +293,8 @@ class DebridHubViewModel(
                         _uiState.update {
                             it.copy(
                                 onboarding = OnboardingUiState(),
-                                errorMessage = "The device authorization session expired. Start again."
+                                errorMessage = "The device authorization session expired. Start again.",
+                                infoMessage = null
                             )
                         }
                         return@launch
@@ -296,7 +303,8 @@ class DebridHubViewModel(
                         _uiState.update {
                             it.copy(
                                 onboarding = OnboardingUiState(),
-                                errorMessage = "Real-Debrid denied the authorization request."
+                                errorMessage = "Real-Debrid denied the authorization request.",
+                                infoMessage = null
                             )
                         }
                         return@launch
@@ -305,7 +313,8 @@ class DebridHubViewModel(
                         _uiState.update {
                             it.copy(
                                 onboarding = OnboardingUiState(),
-                                errorMessage = result.message
+                                errorMessage = result.message,
+                                infoMessage = null
                             )
                         }
                         return@launch
@@ -345,7 +354,6 @@ class DebridHubViewModel(
         }
         val reminders = reminderRepository.scheduleReminders(status)
         _uiState.update { it.copy(scheduledReminders = reminders) }
-        _events.emit(DebridHubEvent.Message("Scheduled ${reminders.size} reminders."))
     }
 
     private suspend fun refreshReminderPreview(status: AccountStatus) {
@@ -367,6 +375,15 @@ class DebridHubViewModel(
             .distinct()
             .joinToString(separator = " | ")
         return RealDebridErrorMessages.presentableMessage(details, fallback)
+    }
+
+    private fun showInfo(message: String) {
+        _uiState.update {
+            it.copy(
+                infoMessage = message,
+                errorMessage = null
+            )
+        }
     }
 
     private fun Boolean.toPermissionState(): NotificationPermissionUiState =

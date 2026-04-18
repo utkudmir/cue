@@ -15,16 +15,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,7 +31,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -41,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -64,7 +60,6 @@ fun DebridHubApp(
     onOpenNotificationSettings: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
     var isTrustCenterOpen by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
@@ -73,7 +68,6 @@ fun DebridHubApp(
                 is DebridHubEvent.OpenUrl -> onOpenUrl(event.url)
                 is DebridHubEvent.ShareDiagnostics -> onShareDiagnostics(event.displayName, event.location)
                 DebridHubEvent.RequestNotificationPermission -> onRequestNotificationPermission()
-                is DebridHubEvent.Message -> snackbarHostState.showSnackbar(event.value)
             }
         }
     }
@@ -86,7 +80,6 @@ fun DebridHubApp(
 
     MaterialTheme {
         Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             topBar = {
                 TopAppBar(
                     title = { Text(if (isTrustCenterOpen) "Trust Center" else "DebridHub") },
@@ -165,17 +158,24 @@ private fun OnboardingScreen(
     onOpenAuthorizationPage: (String) -> Unit,
     onRequestNotifications: () -> Unit,
     onOpenNotificationSettings: () -> Unit
-) {
-    val clipboard = LocalClipboard.current
-    val coroutineScope = rememberCoroutineScope()
+    ) {
+        val clipboard = LocalClipboard.current
+        val coroutineScope = rememberCoroutineScope()
 
-    Column(
+        Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        uiState.infoMessage?.let {
+            MessageBanner(
+                message = it,
+                isError = false
+            )
+        }
+
         Text(
             "Track your Real-Debrid subscription and renew before it lapses.",
             style = MaterialTheme.typography.headlineSmall
@@ -185,13 +185,13 @@ private fun OnboardingScreen(
         SectionCard(title = "Before you connect") {
             Text("1. Tap Connect Real-Debrid to request a device code.")
             Text("2. Copy the code if you want, then approve the device on Real-Debrid.")
-            Text("3. If your browser handoff is interrupted, use Open Page below.")
+            Text("3. If your browser handoff is interrupted, use Open Authorization Page below.")
             Text("4. Return here while DebridHub polls for completion.")
             Text("You can open Trust Center first if you want to inspect privacy, security, diagnostics, and compliance details.")
         }
 
         uiState.errorMessage?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
+            MessageBanner(message = it, isError = true)
         }
 
         val session = uiState.onboarding.session
@@ -226,7 +226,7 @@ private fun OnboardingScreen(
                             onClick = { onOpenAuthorizationPage(session.directVerificationUrl ?: session.verificationUrl) },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Open Page")
+                            Text("Open Authorization Page")
                         }
                     }
                     OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
@@ -307,8 +307,12 @@ private fun HomeScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        uiState.infoMessage?.let {
+            MessageBanner(message = it, isError = false)
+        }
+
         uiState.errorMessage?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
+            MessageBanner(message = it, isError = true)
         }
 
         AccountCard(
@@ -334,7 +338,7 @@ private fun HomeScreen(
         SectionCard(title = "Actions") {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 Button(onClick = onRefresh, modifier = Modifier.weight(1f)) {
-                    Text("Refresh")
+                    Text("Refresh Status")
                 }
                 OutlinedButton(onClick = onRequestNotifications, modifier = Modifier.weight(1f)) {
                     Text("Notifications")
@@ -368,6 +372,14 @@ private fun TrustCenterScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        uiState.infoMessage?.let {
+            MessageBanner(message = it, isError = false)
+        }
+
+        uiState.errorMessage?.let {
+            MessageBanner(message = it, isError = true)
+        }
+
         Text(
             "See exactly how DebridHub handles auth, storage, diagnostics, and feature boundaries.",
             style = MaterialTheme.typography.headlineSmall
@@ -486,8 +498,9 @@ private fun ReminderSettingsCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             listOf(7, 3, 1).forEach { day ->
-                AssistChip(
+                FilterChip(
                     onClick = { onReminderDayToggled(day) },
+                    selected = config.daysBefore.contains(day),
                     label = { Text("$day day${if (day == 1) "" else "s"}") }
                 )
             }
@@ -514,7 +527,7 @@ private fun ReminderScheduleCard(
                 Text("Reminders are currently turned off.")
             }
             notificationPermissionState == NotificationPermissionUiState.Disabled -> {
-                Text("Reminders are planned, but Android notifications are currently disabled for DebridHub. Re-enable them in system settings if you want these alerts to fire.")
+                Text("Reminders are planned, but notifications are currently disabled for DebridHub. Re-enable them in system settings if you want these alerts to fire.")
                 if (reminders.isNotEmpty()) {
                     Text("Planned reminder times:")
                     reminders.forEach { reminder ->
@@ -548,6 +561,20 @@ private fun ToggleRow(
     ) {
         Text(label)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun MessageBanner(
+    message: String,
+    isError: Boolean
+) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = message,
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(16.dp)
+        )
     }
 }
 

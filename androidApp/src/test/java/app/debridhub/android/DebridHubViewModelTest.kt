@@ -72,8 +72,6 @@ class DebridHubViewModelTest {
         )
 
         advanceUntilIdle()
-        val eventDeferred = async { viewModel.events.first() }
-
         viewModel.refreshAccountStatus()
         advanceUntilIdle()
 
@@ -82,7 +80,6 @@ class DebridHubViewModelTest {
         assertEquals(status, state.accountStatus)
         assertEquals(scheduled, state.scheduledReminders)
         assertEquals(1, reminderRepository.scheduleCallCount)
-        assertEquals(DebridHubEvent.Message("Scheduled 2 reminders."), eventDeferred.await())
     }
 
     @Test
@@ -96,8 +93,6 @@ class DebridHubViewModelTest {
         )
 
         advanceUntilIdle()
-        val eventDeferred = async { viewModel.events.first() }
-
         viewModel.disconnect()
         advanceUntilIdle()
 
@@ -107,7 +102,7 @@ class DebridHubViewModelTest {
         assertEquals(reminderRepository.config, state.reminderConfig)
         assertTrue(authRepository.disconnectCalled)
         assertEquals(1, reminderRepository.cancelCallCount)
-        assertEquals(DebridHubEvent.Message("Disconnected from Real-Debrid."), eventDeferred.await())
+        assertEquals("Disconnected from Real-Debrid.", state.infoMessage)
     }
 
     @Test
@@ -159,8 +154,6 @@ class DebridHubViewModelTest {
         advanceUntilIdle()
         viewModel.refreshAccountStatus()
         advanceUntilIdle()
-        val eventDeferred = async { viewModel.events.first() }
-
         viewModel.onNotificationPermissionResult(granted = false)
         advanceUntilIdle()
 
@@ -168,10 +161,7 @@ class DebridHubViewModelTest {
         assertEquals(preview, state.scheduledReminders)
         assertEquals(0, reminderRepository.scheduleCallCount)
         assertEquals(2, reminderRepository.previewCallCount)
-        assertEquals(
-            DebridHubEvent.Message("Notifications remain disabled. Open system settings if you want reminder alerts."),
-            eventDeferred.await()
-        )
+        assertEquals("Notifications remain disabled. Open system settings if you want reminder alerts.", state.infoMessage)
     }
 
     @Test
@@ -206,10 +196,8 @@ class DebridHubViewModelTest {
         )
 
         advanceUntilIdle()
-        val firstEvent = async { viewModel.events.first() }
         viewModel.refreshAccountStatus()
         advanceUntilIdle()
-        assertEquals(DebridHubEvent.Message("Scheduled 1 reminders."), firstEvent.await())
 
         viewModel.setReminderEnabled(false)
         advanceUntilIdle()
@@ -250,10 +238,6 @@ class DebridHubViewModelTest {
         advanceUntilIdle()
 
         val openUrlEvent = async { viewModel.events.first { it is DebridHubEvent.OpenUrl } }
-        val completedEvent = async {
-            viewModel.events.first { it == DebridHubEvent.Message("Authorization completed.") }
-        }
-
         viewModel.startAuthorization()
         advanceUntilIdle()
 
@@ -261,10 +245,10 @@ class DebridHubViewModelTest {
             DebridHubEvent.OpenUrl("https://real-debrid.com/device/direct"),
             openUrlEvent.await()
         )
-        assertEquals(DebridHubEvent.Message("Authorization completed."), completedEvent.await())
         assertTrue(viewModel.uiState.value.isAuthenticated)
         assertEquals(OnboardingUiState(), viewModel.uiState.value.onboarding)
         assertEquals(sampleAccountStatus(), viewModel.uiState.value.accountStatus)
+        assertEquals("Authorization completed.", viewModel.uiState.value.infoMessage)
     }
 
     @Test
