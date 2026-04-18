@@ -161,12 +161,39 @@ jobs:
       - name: Verify RC Gate
         if: steps.schedule_gate.outputs.enabled == 'true'
         shell: bash
+        env:
+          STEP_COMMAND_TIMEOUT_SECONDS: "1800"
         run: |
           set -euo pipefail
           echo "== verify rc gate =="
           echo "profile: $VERIFY_PROFILE"
           echo "step command timeout seconds: ${STEP_COMMAND_TIMEOUT_SECONDS:-2400}"
-          make verify-rc
+          set +e
+          make verify-rc &
+          VERIFY_PID=$!
+          set -e
+
+          while kill -0 "$VERIFY_PID" 2>/dev/null; do
+            latest_run_dir=""
+            if [[ -d build/rc-verify ]]; then
+              latest_run_dir="$(ls -1dt build/rc-verify/* 2>/dev/null | head -n 1 || true)"
+            fi
+
+            if [[ -n "$latest_run_dir" && -f "$latest_run_dir/results.tsv" ]]; then
+              pass_count="$(awk -F '\t' '$3 == "PASS" { c += 1 } END { print c + 0 }' "$latest_run_dir/results.tsv")"
+              fail_count="$(awk -F '\t' '$3 == "FAIL" { c += 1 } END { print c + 0 }' "$latest_run_dir/results.tsv")"
+              warn_count="$(awk -F '\t' '$3 == "WARN" { c += 1 } END { print c + 0 }' "$latest_run_dir/results.tsv")"
+              skip_count="$(awk -F '\t' '$3 == "SKIP" { c += 1 } END { print c + 0 }' "$latest_run_dir/results.tsv")"
+              latest_step="$(awk -F '\t' 'NF { key=$1; status=$3 } END { if (key != "") print key "=" status }' "$latest_run_dir/results.tsv")"
+              echo "[verify-rc-progress] run=$(basename "$latest_run_dir") pass=$pass_count fail=$fail_count warn=$warn_count skip=$skip_count latest=${latest_step:-none}"
+            else
+              echo "[verify-rc-progress] waiting for first results entry..."
+            fi
+
+            sleep 20
+          done
+
+          wait "$VERIFY_PID"
           echo "verify rc gate completed"
 
       - name: Upload RC artifacts
