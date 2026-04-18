@@ -60,6 +60,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 env:
   VERIFY_PROFILE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.verify_profile || (github.event_name == 'schedule' && 'rc-full' || 'ci-pr') }}
@@ -355,12 +356,70 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  fail-fast-cancel:
+    needs: schedule-gate
+    if: needs['schedule-gate'].outputs.enabled == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Cancel run when required job fails
+        shell: bash
+        run: |
+          set -euo pipefail
+          targets=("verify-shared" "verify-android" "verify-ios")
+          deadline=$((SECONDS + 10800))
+
+          while [[ $SECONDS -lt $deadline ]]; do
+            mapfile -t rows < <(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?per_page=100" --jq '.jobs[] | [.name, .status, (.conclusion // "")] | @tsv')
+
+            declare -A status_by_name=()
+            declare -A conclusion_by_name=()
+            for row in "${rows[@]}"; do
+              name="${row%%$'\t'*}"
+              rest="${row#*$'\t'}"
+              status="${rest%%$'\t'*}"
+              conclusion="${rest#*$'\t'}"
+              status_by_name["$name"]="$status"
+              conclusion_by_name["$name"]="$conclusion"
+            done
+
+            completed_success=0
+            for target in "${targets[@]}"; do
+              status="${status_by_name[$target]:-pending}"
+              conclusion="${conclusion_by_name[$target]:-}"
+
+              if [[ "$status" == "completed" ]]; then
+                if [[ "$conclusion" == "success" ]]; then
+                  completed_success=$((completed_success + 1))
+                else
+                  echo "Detected failing required job: $target (conclusion=$conclusion)."
+                  gh run cancel "$GITHUB_RUN_ID" || true
+                  exit 1
+                fi
+              fi
+            done
+
+            if [[ "$completed_success" -eq "${#targets[@]}" ]]; then
+              echo "All required jobs completed successfully; fail-fast monitor exiting."
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "Fail-fast monitor timed out; canceling run to avoid resource waste."
+          gh run cancel "$GITHUB_RUN_ID" || true
+          exit 1
+
   verify-gate:
     needs:
       - schedule-gate
       - verify-shared
       - verify-android
       - verify-ios
+      - fail-fast-cancel
     if: always() && needs['schedule-gate'].outputs.enabled == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60

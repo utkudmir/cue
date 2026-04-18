@@ -264,6 +264,64 @@ android_effective_avd_name() {
   printf '%s-%s\n' "$avd_name" "$target_abi"
 }
 
+android_device_profile_exists() {
+  local avdmanager_bin="$1"
+  local target_profile="$2"
+
+  [[ -n "$target_profile" ]] || return 1
+
+  "$avdmanager_bin" list device | awk -v target="$target_profile" '
+    / or "/ {
+      value = $0
+      sub(/^.* or "/, "", value)
+      sub(/".*$/, "", value)
+      if (value == target) {
+        found = 1
+      }
+    }
+    END { exit found ? 0 : 1 }
+  '
+}
+
+android_first_device_profile() {
+  local avdmanager_bin="$1"
+
+  "$avdmanager_bin" list device | awk '
+    / or "/ {
+      value = $0
+      sub(/^.* or "/, "", value)
+      sub(/".*$/, "", value)
+      print value
+      exit
+    }
+  '
+}
+
+android_resolve_device_profile() {
+  local avdmanager_bin="$1"
+  local requested_profile="${2:-}"
+  local fallback_profile="pixel"
+  local first_profile
+
+  if [[ -n "$requested_profile" ]] && android_device_profile_exists "$avdmanager_bin" "$requested_profile"; then
+    printf '%s\n' "$requested_profile"
+    return 0
+  fi
+
+  if android_device_profile_exists "$avdmanager_bin" "$fallback_profile"; then
+    printf '%s\n' "$fallback_profile"
+    return 0
+  fi
+
+  first_profile="$(android_first_device_profile "$avdmanager_bin")"
+  if [[ -n "$first_profile" ]]; then
+    printf '%s\n' "$first_profile"
+    return 0
+  fi
+
+  return 1
+}
+
 provision_android_targets() {
   local row
   local label
@@ -276,6 +334,7 @@ provision_android_targets() {
   local target_abi
   local target_system_image
   local effective_avd_name
+  local resolved_device_profile
 
   while IFS= read -r row; do
     [[ -z "$row" ]] && continue
@@ -299,8 +358,14 @@ provision_android_targets() {
     effective_avd_name="$(android_effective_avd_name "$avd_name" "$abi" "$target_abi")"
     [[ -z "$effective_avd_name" ]] && effective_avd_name="$avd_name"
 
-    if [[ -z "$device_profile" ]]; then
-      device_profile="pixel"
+    resolved_device_profile="$(android_resolve_device_profile "$AVDMANAGER_BIN" "$device_profile" || true)"
+    if [[ -z "$resolved_device_profile" ]]; then
+      echo "[android][$label] unable to resolve device profile (requested=${device_profile:-<empty>})" >&2
+      ANDROID_FAILURES=$((ANDROID_FAILURES + 1))
+      continue
+    fi
+    if [[ -n "$device_profile" && "$resolved_device_profile" != "$device_profile" ]]; then
+      echo "[android][$label] device profile '$device_profile' unavailable; using '$resolved_device_profile'"
     fi
 
     if android_avd_exists "$effective_avd_name"; then
@@ -319,7 +384,7 @@ provision_android_targets() {
     set -o pipefail
 
     echo "[android][$label] creating avd: $effective_avd_name"
-    printf 'no\n' | "$AVDMANAGER_BIN" create avd -n "$effective_avd_name" -k "$target_system_image" --abi "$target_abi" -d "$device_profile" --force >/dev/null
+    printf 'no\n' | "$AVDMANAGER_BIN" create avd -n "$effective_avd_name" -k "$target_system_image" --abi "$target_abi" -d "$resolved_device_profile" --force >/dev/null
 
     if android_avd_exists "$effective_avd_name"; then
       echo "[android][$label] provisioned: $effective_avd_name"
