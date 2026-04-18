@@ -83,6 +83,27 @@ slugify() {
   printf '%s' "$value"
 }
 
+reason_in_csv() {
+  local target="${1:-}"
+  local csv="${2:-}"
+  local entry
+
+  if [[ -z "$target" || -z "$csv" ]]; then
+    return 1
+  fi
+
+  IFS=',' read -r -a entries <<< "$csv"
+  for entry in "${entries[@]}"; do
+    entry="$(printf '%s' "$entry" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+    [[ -z "$entry" ]] && continue
+    if [[ "$entry" == "$target" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 current_log_dir() {
   if [[ -n "$STEP_LOG_DIR" ]]; then
     printf '%s' "$STEP_LOG_DIR"
@@ -1365,6 +1386,7 @@ run_env_step_with_retry() {
   local status="FAIL"
   local reason=""
   local retries="$MAX_ENV_RETRIES"
+  local warn_reasons_csv="${ENV_FAIL_AS_WARN_REASONS:-}"
 
   mkdir -p "$(current_log_dir)"
   log_path="$(current_log_dir)/$key.log"
@@ -1407,6 +1429,14 @@ run_env_step_with_retry() {
     fi
     attempt=$((attempt + 1))
   done
+
+  if [[ "$status" == "FAIL" ]] && reason_in_csv "$reason" "$warn_reasons_csv"; then
+    status="WARN"
+    {
+      echo "Downgrading environment failure to warning: $reason"
+      echo "Downgrade policy: $warn_reasons_csv"
+    } >> "$log_path"
+  fi
 
   complete_step "$key" "$label" "$status" "$retries" "$log_path" "$reason"
 }
@@ -1505,6 +1535,11 @@ run_android_device_matrix() {
   local env_status
   local install_status
   local device_runtime_id
+  local env_warn_reasons=""
+
+  if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+    env_warn_reasons="android_emulator_hvf_unsupported"
+  fi
 
   dependency_status="$(get_step_status "android_debug_build")"
   android_rows_file="$(mktemp)"
@@ -1525,7 +1560,7 @@ run_android_device_matrix() {
 
     selected_avd=""
     if selected_avd="$(select_android_candidate "$primary" "$fallback_list")"; then
-      run_env_step_with_retry "${key_prefix}_env_ready" "Android [$label] environment readiness" "ensure_android_environment" "$selected_avd"
+      ENV_FAIL_AS_WARN_REASONS="$env_warn_reasons" run_env_step_with_retry "${key_prefix}_env_ready" "Android [$label] environment readiness" "ensure_android_environment" "$selected_avd"
       env_status="$(get_step_status "${key_prefix}_env_ready")"
       device_runtime_id=""
       if [[ "$env_status" == "PASS" ]]; then
