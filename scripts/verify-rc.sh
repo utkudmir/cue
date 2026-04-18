@@ -23,6 +23,7 @@ STEP_LOG_DIR=""
 MAX_ENV_RETRIES=2
 ENV_RETRY_WAIT_SECONDS=60
 KEEP_RUN_COUNT=5
+STEP_COMMAND_TIMEOUT_SECONDS="${STEP_COMMAND_TIMEOUT_SECONDS:-2400}"
 
 ANDROID_PACKAGE="com.utku.debridhub"
 IOS_BUNDLE_ID="com.utku.debridhub.ios"
@@ -173,23 +174,109 @@ run_command_step() {
   local key="$1"
   local label="$2"
   local command="$3"
+  local timeout_seconds="${4:-$STEP_COMMAND_TIMEOUT_SECONDS}"
   local log_path
   local status="PASS"
   local reason=""
+  local rc=0
 
   mkdir -p "$(current_log_dir)"
   log_path="$(current_log_dir)/$key.log"
 
-  {
-    printf '$ %s\n\n' "$command"
-    (
-      cd "$ROOT_DIR"
-      eval "$command"
+  printf '$ %s\n\n' "$command" > "$log_path"
+
+  python3 - "$ROOT_DIR" "$command" "$log_path" "$timeout_seconds" <<'PY' || rc=$?
+import os
+import select
+import signal
+import subprocess
+import sys
+import time
+
+root_dir, command, log_path, timeout_seconds_raw = sys.argv[1:5]
+
+try:
+    timeout_seconds = int(timeout_seconds_raw)
+except ValueError:
+    timeout_seconds = 2400
+
+start = time.monotonic()
+
+with open(log_path, "a", encoding="utf-8") as log_file:
+    process = subprocess.Popen(
+        ["/bin/bash", "-lc", command],
+        cwd=root_dir,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        preexec_fn=os.setsid,
     )
-  } > "$log_path" 2>&1 || {
+
+    timed_out = False
+
+    while True:
+        if process.stdout is None:
+            break
+
+        ready, _, _ = select.select([process.stdout], [], [], 1.0)
+        if ready:
+            line = process.stdout.readline()
+            if line:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                log_file.write(line)
+                log_file.flush()
+
+        if process.poll() is not None:
+            break
+
+        if time.monotonic() - start > timeout_seconds:
+            timed_out = True
+            timeout_message = f"\n[verify-rc] command timed out after {timeout_seconds}s\n"
+            sys.stdout.write(timeout_message)
+            sys.stdout.flush()
+            log_file.write(timeout_message)
+            log_file.flush()
+
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+
+            grace_deadline = time.monotonic() + 5
+            while process.poll() is None and time.monotonic() < grace_deadline:
+                time.sleep(0.1)
+
+            if process.poll() is None:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            break
+
+    if process.stdout is not None:
+        remainder = process.stdout.read()
+        if remainder:
+            sys.stdout.write(remainder)
+            sys.stdout.flush()
+            log_file.write(remainder)
+            log_file.flush()
+
+    if timed_out:
+        raise SystemExit(124)
+
+    raise SystemExit(process.returncode if process.returncode is not None else 1)
+PY
+
+  if [[ "$rc" -ne 0 ]]; then
     status="FAIL"
-    reason="command_failed"
-  }
+    if [[ "$rc" -eq 124 ]]; then
+      reason="command_timeout"
+    else
+      reason="command_failed"
+    fi
+  fi
 
   complete_step "$key" "$label" "$status" "0" "$log_path" "$reason"
 }

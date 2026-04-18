@@ -97,6 +97,10 @@ The gate script writes artifacts to `build/rc-verify/<run_id>/` and includes:
 
 The script retains only the latest 5 runs.
 
+Long-running command steps now stream output to CI logs while writing to local
+step logs. A per-command timeout is enforced by
+`STEP_COMMAND_TIMEOUT_SECONDS` (default `2400`).
+
 ## Technical Pass Criteria
 
 Minimum automated pass requirements:
