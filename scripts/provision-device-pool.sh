@@ -208,15 +208,22 @@ android_avd_exists() {
 android_avd_exists_via_avdmanager() {
   local avd_name="$1"
   "$AVDMANAGER_BIN" list avd | awk -v target="$avd_name" '\
-    /^\s*Name:/ {\
+    /^[[:space:]]*Name:/ {\
       value = $0\
-      sub(/^\s*Name:\s*/, "", value)\
+      sub(/^[[:space:]]*Name:[[:space:]]*/, "", value)\
       if (value == target) {\
         found = 1\
       }\
     }\
     END { exit found ? 0 : 1 }\
   '
+}
+
+android_avd_exists_on_disk() {
+  local avd_name="$1"
+  local avd_home="${ANDROID_AVD_HOME:-$HOME/.android/avd}"
+
+  [[ -f "$avd_home/$avd_name.ini" || -d "$avd_home/$avd_name.avd" ]]
 }
 
 android_host_arch() {
@@ -382,7 +389,7 @@ provision_android_targets() {
       echo "[android][$label] device profile '$device_profile' unavailable; using '$resolved_device_profile'"
     fi
 
-    if android_avd_exists "$effective_avd_name" || android_avd_exists_via_avdmanager "$effective_avd_name"; then
+    if android_avd_exists "$effective_avd_name" || android_avd_exists_via_avdmanager "$effective_avd_name" || android_avd_exists_on_disk "$effective_avd_name"; then
       echo "[android][$label] exists: $effective_avd_name"
       continue
     fi
@@ -408,11 +415,14 @@ provision_android_targets() {
       fi
     fi
 
-    if android_avd_exists "$effective_avd_name" || android_avd_exists_via_avdmanager "$effective_avd_name"; then
+    if android_avd_exists "$effective_avd_name" || android_avd_exists_via_avdmanager "$effective_avd_name" || android_avd_exists_on_disk "$effective_avd_name"; then
       echo "[android][$label] provisioned: $effective_avd_name"
     else
       echo "[android][$label] failed to provision: $effective_avd_name" >&2
       "$AVDMANAGER_BIN" list avd >&2 || true
+      if [[ -d "${ANDROID_AVD_HOME:-$HOME/.android/avd}" ]]; then
+        ls -la "${ANDROID_AVD_HOME:-$HOME/.android/avd}" >&2 || true
+      fi
       ANDROID_FAILURES=$((ANDROID_FAILURES + 1))
     fi
   done < "$PROFILE_ANDROID_FILE"

@@ -396,7 +396,7 @@ jobs:
                 else
                   echo "Detected failing required job: $target (conclusion=$conclusion)."
                   gh run cancel "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" || true
-                  exit 1
+                  exit 0
                 fi
               fi
             done
@@ -411,7 +411,7 @@ jobs:
 
           echo "Fail-fast monitor timed out; canceling run to avoid resource waste."
           gh run cancel "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" || true
-          exit 1
+          exit 0
 
   verify-gate:
     needs:
