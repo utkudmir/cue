@@ -205,6 +205,20 @@ android_avd_exists() {
   "$EMULATOR_BIN" -list-avds | awk -v target="$avd_name" '$0 == target { found = 1 } END { exit found ? 0 : 1 }'
 }
 
+android_avd_exists_via_avdmanager() {
+  local avd_name="$1"
+  "$AVDMANAGER_BIN" list avd | awk -v target="$avd_name" '\
+    /^\s*Name:/ {\
+      value = $0\
+      sub(/^\s*Name:\s*/, "", value)\
+      if (value == target) {\
+        found = 1\
+      }\
+    }\
+    END { exit found ? 0 : 1 }\
+  '
+}
+
 android_host_arch() {
   local arch
   arch="$(uname -m 2>/dev/null || printf 'unknown')"
@@ -368,7 +382,7 @@ provision_android_targets() {
       echo "[android][$label] device profile '$device_profile' unavailable; using '$resolved_device_profile'"
     fi
 
-    if android_avd_exists "$effective_avd_name"; then
+    if android_avd_exists "$effective_avd_name" || android_avd_exists_via_avdmanager "$effective_avd_name"; then
       echo "[android][$label] exists: $effective_avd_name"
       continue
     fi
@@ -384,12 +398,21 @@ provision_android_targets() {
     set -o pipefail
 
     echo "[android][$label] creating avd: $effective_avd_name"
-    printf 'no\n' | "$AVDMANAGER_BIN" create avd -n "$effective_avd_name" -k "$target_system_image" --abi "$target_abi" -d "$resolved_device_profile" --force >/dev/null
+    if ! printf 'no\n' | "$AVDMANAGER_BIN" create avd -n "$effective_avd_name" -k "$target_system_image" --abi "$target_abi" -d "$resolved_device_profile" --force >/dev/null 2>&1; then
+      echo "[android][$label] avdmanager create failed with profile '$resolved_device_profile'; retrying without explicit device profile" >&2
+      if ! printf 'no\n' | "$AVDMANAGER_BIN" create avd -n "$effective_avd_name" -k "$target_system_image" --abi "$target_abi" --force >/dev/null 2>&1; then
+        echo "[android][$label] avdmanager create failed for $effective_avd_name (image=$target_system_image abi=$target_abi)" >&2
+        "$AVDMANAGER_BIN" list avd >&2 || true
+        ANDROID_FAILURES=$((ANDROID_FAILURES + 1))
+        continue
+      fi
+    fi
 
-    if android_avd_exists "$effective_avd_name"; then
+    if android_avd_exists "$effective_avd_name" || android_avd_exists_via_avdmanager "$effective_avd_name"; then
       echo "[android][$label] provisioned: $effective_avd_name"
     else
       echo "[android][$label] failed to provision: $effective_avd_name" >&2
+      "$AVDMANAGER_BIN" list avd >&2 || true
       ANDROID_FAILURES=$((ANDROID_FAILURES + 1))
     fi
   done < "$PROFILE_ANDROID_FILE"
