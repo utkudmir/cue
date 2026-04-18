@@ -4,7 +4,14 @@ set -o pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNS_ROOT="$ROOT_DIR/build/rc-verify"
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_ID_BASE="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_ID="$RUN_ID_BASE"
+if [[ -n "${VERIFY_RC_SCOPE:-}" && "${VERIFY_RC_SCOPE:-full}" != "full" ]]; then
+  RUN_ID="${RUN_ID}-${VERIFY_RC_SCOPE}"
+fi
+if [[ -e "$RUNS_ROOT/$RUN_ID" ]]; then
+  RUN_ID="${RUN_ID}-$$"
+fi
 RUN_DIR="$RUNS_ROOT/$RUN_ID"
 LOG_DIR="$RUN_DIR/logs"
 EVIDENCE_DIR="$RUN_DIR/evidence"
@@ -13,6 +20,7 @@ RESULT_JSON="$RUN_DIR/result.json"
 SUMMARY_FILE="$RUN_DIR/summary.txt"
 VERIFY_PROFILE="${VERIFY_PROFILE:-local-fast}"
 DEVICE_POOL_FILE="$ROOT_DIR/ci/device-pool.yml"
+IOS_RESOLVER_SCRIPT="$ROOT_DIR/scripts/resolve-ios-simulator.py"
 PROFILE_META_FILE="$RUN_DIR/profile-meta.env"
 PROFILE_ANDROID_FILE="$RUN_DIR/profile-android.tsv"
 PROFILE_IOS_FILE="$RUN_DIR/profile-ios.tsv"
@@ -24,17 +32,23 @@ MAX_ENV_RETRIES=2
 ENV_RETRY_WAIT_SECONDS=60
 KEEP_RUN_COUNT=5
 STEP_COMMAND_TIMEOUT_SECONDS="${STEP_COMMAND_TIMEOUT_SECONDS:-2400}"
+VERIFY_RC_SCOPE="${VERIFY_RC_SCOPE:-full}"
 
-ANDROID_PACKAGE="com.utku.debridhub"
-IOS_BUNDLE_ID="com.utku.debridhub.ios"
-ALLOWED_SIGNOFF_REVIEWER="utkudemir"
+ANDROID_PACKAGE="app.debridhub"
+IOS_BUNDLE_ID="app.debridhub.ios"
+ALLOWED_SIGNOFF_REVIEWER="release-manager"
 
 OVERALL_FAIL=0
 ANDROID_DEVICE_ID=""
 ANDROID_AVD_NAME_EFFECTIVE=""
+ANDROID_ABI_EFFECTIVE=""
+ANDROID_SYSTEM_IMAGE_EFFECTIVE=""
 ANDROID_LABEL_EFFECTIVE=""
 IOS_SIMULATOR_UDID=""
-IOS_SIMULATOR_NAME_EFFECTIVE="${IOS_SIMULATOR_NAME:-iPhone 17 Pro Max}"
+IOS_SIMULATOR_NAME_EFFECTIVE="${IOS_SIMULATOR_NAME:-}"
+IOS_RUNTIME_EFFECTIVE=""
+IOS_DEVICE_TYPE_EFFECTIVE=""
+IOS_DEVICE_CLASS_EFFECTIVE=""
 IOS_LABEL_EFFECTIVE=""
 LAST_ERROR=""
 
@@ -44,6 +58,11 @@ mkdir -p "$LOG_DIR" "$EVIDENCE_DIR"
 
 if ! command -v python3 >/dev/null 2>&1; then
   echo "python3 is required for verify-rc" >&2
+  exit 1
+fi
+
+if [[ ! -x "$IOS_RESOLVER_SCRIPT" ]]; then
+  echo "resolve-ios-simulator script is required for verify-rc: $IOS_RESOLVER_SCRIPT" >&2
   exit 1
 fi
 
@@ -433,13 +452,15 @@ File.open(profile_ios_file, "w") do |file|
   resolved["ios"].each do |entry|
     label = entry["label"].to_s
     primary = entry["simulator"].to_s
-    next if primary.empty?
+    device_class = entry["class"].to_s
+    primary = device_class if primary.empty?
+    next if label.empty? && primary.empty?
 
     fallbacks = Array(entry["fallbacks"]).map(&:to_s).join("|")
     runtime = entry["runtime"].to_s
     device_type = entry["device_type"].to_s
 
-    file.puts([label, primary, fallbacks, runtime, device_type].join("\t"))
+    file.puts([label, primary, fallbacks, runtime, device_type, device_class].join("\t"))
   end
 end
 RUBY
@@ -538,8 +559,246 @@ run_profile_target_guard_step() {
   complete_step "$key" "$label" "$status" "0" "$log_path" "$reason"
 }
 
+find_android_sdk_root() {
+  if [[ -n "${ANDROID_SDK_ROOT:-}" && -d "$ANDROID_SDK_ROOT" ]]; then
+    printf '%s\n' "$ANDROID_SDK_ROOT"
+    return 0
+  fi
+
+  if [[ -n "${ANDROID_HOME:-}" && -d "$ANDROID_HOME" ]]; then
+    printf '%s\n' "$ANDROID_HOME"
+    return 0
+  fi
+
+  if [[ -d "$HOME/Library/Android/sdk" ]]; then
+    printf '%s\n' "$HOME/Library/Android/sdk"
+    return 0
+  fi
+
+  return 1
+}
+
+find_android_tool() {
+  local sdk_root="$1"
+  local tool_name="$2"
+  local candidate
+
+  for candidate in \
+    "$sdk_root/cmdline-tools/latest/bin/$tool_name" \
+    "$sdk_root/cmdline-tools/bin/$tool_name" \
+    "$sdk_root/tools/bin/$tool_name"; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+android_host_arch() {
+  local arch
+  arch="$(uname -m 2>/dev/null || printf 'unknown')"
+  case "$arch" in
+    arm64|aarch64)
+      printf 'arm64-v8a\n'
+      ;;
+    x86_64|amd64)
+      printf 'x86_64\n'
+      ;;
+    *)
+      printf 'x86_64\n'
+      ;;
+  esac
+}
+
+android_target_abi_for_host() {
+  local requested_abi="${1:-}"
+  local preferred_abi
+  preferred_abi="$(android_host_arch)"
+
+  case "$requested_abi" in
+    arm64-v8a|x86_64)
+      printf '%s\n' "$preferred_abi"
+      ;;
+    '')
+      printf '%s\n' "$preferred_abi"
+      ;;
+    *)
+      printf '%s\n' "$requested_abi"
+      ;;
+  esac
+}
+
+android_system_image_for_abi() {
+  local system_image="${1:-}"
+  local target_abi="${2:-}"
+
+  if [[ -z "$system_image" || -z "$target_abi" ]]; then
+    printf '%s\n' "$system_image"
+    return
+  fi
+
+  printf '%s\n' "$system_image" | sed -E "s/(^|;)(x86_64|arm64-v8a)$/\\1${target_abi}/"
+}
+
+android_effective_avd_name() {
+  local avd_name="${1:-}"
+  local requested_abi="${2:-}"
+  local target_abi="${3:-}"
+
+  if [[ -z "$avd_name" || -z "$target_abi" || "$requested_abi" == "$target_abi" ]]; then
+    printf '%s\n' "$avd_name"
+    return
+  fi
+
+  printf '%s-%s\n' "$avd_name" "$target_abi"
+}
+
+android_wait_for_device_ready() {
+  local device_id="${1:-}"
+  local deadline=$((SECONDS + 180))
+  local boot_completed
+  local dev_bootcomplete
+  local logged_wait=0
+
+  if [[ -z "$device_id" ]]; then
+    LAST_ERROR="android_device_missing"
+    return 1
+  fi
+
+  adb -s "$device_id" wait-for-device >/dev/null 2>&1 || true
+
+  while [[ $SECONDS -lt $deadline ]]; do
+    boot_completed="$(adb -s "$device_id" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+    dev_bootcomplete="$(adb -s "$device_id" shell getprop dev.bootcomplete 2>/dev/null | tr -d '\r')"
+
+    if [[ "$boot_completed" == "1" && ( -z "$dev_bootcomplete" || "$dev_bootcomplete" == "1" ) ]]; then
+      if adb -s "$device_id" shell pm path android >/dev/null 2>&1; then
+        echo "Android device ready: $device_id"
+        return 0
+      fi
+    fi
+
+    if (( logged_wait % 5 == 0 )); then
+      echo "Waiting for Android services on $device_id (sys.boot_completed=${boot_completed:-<empty>} dev.bootcomplete=${dev_bootcomplete:-<empty>})"
+    fi
+    logged_wait=$((logged_wait + 1))
+
+    sleep 2
+  done
+
+  LAST_ERROR="android_device_services_timeout"
+  return 1
+}
+
+android_avd_exists() {
+  local emulator_bin="$1"
+  local avd_name="$2"
+  "$emulator_bin" -list-avds | awk -v target="$avd_name" '$0 == target { found = 1 } END { exit found ? 0 : 1 }'
+}
+
+ensure_android_avd_from_profile() {
+  local avd_name="$1"
+  local sdk_root
+  local emulator_bin
+  local sdkmanager_bin
+  local avdmanager_bin
+  local row
+  local row_avd
+  local api
+  local abi
+  local system_image
+  local device_profile
+  local target_abi
+  local target_system_image
+  local effective_avd_name
+
+  sdk_root="$(find_android_sdk_root || true)"
+  if [[ -z "$sdk_root" ]]; then
+    LAST_ERROR="android_sdk_root_not_found"
+    return 1
+  fi
+
+  emulator_bin="$sdk_root/emulator/emulator"
+  sdkmanager_bin="$(find_android_tool "$sdk_root" sdkmanager || true)"
+  avdmanager_bin="$(find_android_tool "$sdk_root" avdmanager || true)"
+
+  if [[ ! -x "$emulator_bin" || -z "$sdkmanager_bin" || -z "$avdmanager_bin" ]]; then
+    LAST_ERROR="android_tools_missing"
+    return 1
+  fi
+
+  if [[ ! -s "$PROFILE_ANDROID_FILE" ]]; then
+    LAST_ERROR="no_android_profile_targets"
+    return 1
+  fi
+
+  api=""
+  abi=""
+  system_image=""
+  device_profile=""
+
+  while IFS= read -r row; do
+    [[ -z "$row" ]] && continue
+    row_avd="$(printf '%s' "$row" | awk -F '\t' '{print $2}')"
+    [[ "$row_avd" != "$avd_name" ]] && continue
+    api="$(printf '%s' "$row" | awk -F '\t' '{print $4}')"
+    abi="$(printf '%s' "$row" | awk -F '\t' '{print $5}')"
+    system_image="$(printf '%s' "$row" | awk -F '\t' '{print $6}')"
+    device_profile="$(printf '%s' "$row" | awk -F '\t' '{print $7}')"
+    break
+  done < "$PROFILE_ANDROID_FILE"
+
+  if [[ -z "$system_image" ]]; then
+    LAST_ERROR="android_profile_missing_system_image"
+    return 1
+  fi
+
+  target_abi="$(android_target_abi_for_host "$abi")"
+  target_system_image="$(android_system_image_for_abi "$system_image" "$target_abi")"
+  effective_avd_name="$(android_effective_avd_name "$avd_name" "$abi" "$target_abi")"
+
+  if [[ -z "$effective_avd_name" ]]; then
+    effective_avd_name="$avd_name"
+  fi
+
+  ANDROID_AVD_NAME_EFFECTIVE="$effective_avd_name"
+  ANDROID_ABI_EFFECTIVE="$target_abi"
+  ANDROID_SYSTEM_IMAGE_EFFECTIVE="$target_system_image"
+
+  if android_avd_exists "$emulator_bin" "$effective_avd_name"; then
+    return 0
+  fi
+
+  if [[ -z "$device_profile" ]]; then
+    device_profile="pixel"
+  fi
+
+  set +o pipefail
+  if ! yes | "$sdkmanager_bin" --install "$target_system_image" >/dev/null; then
+    set -o pipefail
+    LAST_ERROR="android_system_image_install_failed"
+    return 1
+  fi
+  set -o pipefail
+
+  if ! printf 'no\n' | "$avdmanager_bin" create avd -n "$effective_avd_name" -k "$target_system_image" --abi "$target_abi" -d "$device_profile" --force >/dev/null; then
+    LAST_ERROR="android_avd_create_failed"
+    return 1
+  fi
+
+  if ! android_avd_exists "$emulator_bin" "$effective_avd_name"; then
+    LAST_ERROR="android_avd_missing_after_create"
+    return 1
+  fi
+
+  return 0
+}
+
 resolve_android_avd_from_profile() {
-  local emulator_bin="$HOME/Library/Android/sdk/emulator/emulator"
+  local sdk_root
+  local emulator_bin
   local available_avds
   local row
   local label
@@ -553,6 +812,13 @@ resolve_android_avd_from_profile() {
     return 1
   fi
 
+  sdk_root="$(find_android_sdk_root || true)"
+  if [[ -z "$sdk_root" ]]; then
+    LAST_ERROR="android_sdk_root_not_found"
+    return 1
+  fi
+
+  emulator_bin="$sdk_root/emulator/emulator"
   if [[ ! -x "$emulator_bin" ]]; then
     LAST_ERROR="android_emulator_not_found"
     return 1
@@ -593,9 +859,9 @@ resolve_ios_simulator_from_profile() {
   local label
   local primary
   local fallback_list
-  local candidates
-  local candidate
-  local candidate_udid
+  local runtime
+  local device_type
+  local class_hint
 
   if [[ ! -s "$PROFILE_IOS_FILE" ]]; then
     LAST_ERROR="no_ios_profile_targets"
@@ -607,28 +873,80 @@ resolve_ios_simulator_from_profile() {
     label="$(printf '%s' "$row" | awk -F '\t' '{print $1}')"
     primary="$(printf '%s' "$row" | awk -F '\t' '{print $2}')"
     fallback_list="$(printf '%s' "$row" | awk -F '\t' '{print $3}')"
-    [[ -z "$primary" ]] && continue
-    candidates="$primary"
-    if [[ -n "$fallback_list" ]]; then
-      candidates="$candidates|$fallback_list"
+    runtime="$(printf '%s' "$row" | awk -F '\t' '{print $4}')"
+    device_type="$(printf '%s' "$row" | awk -F '\t' '{print $5}')"
+    class_hint="$(printf '%s' "$row" | awk -F '\t' '{print $6}')"
+
+    if resolve_ios_target "$label" "$primary" "$fallback_list" "$runtime" "$device_type" "$class_hint"; then
+      IOS_LABEL_EFFECTIVE="${label:-default}"
+      return 0
     fi
-
-    IFS='|' read -r -a candidate_array <<< "$candidates"
-    for candidate in "${candidate_array[@]}"; do
-      candidate="$(printf '%s' "$candidate" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
-      [[ -z "$candidate" ]] && continue
-
-      candidate_udid="$(find_ios_simulator_udid_by_name "$candidate")"
-      if [[ -n "$candidate_udid" ]]; then
-        IOS_SIMULATOR_NAME_EFFECTIVE="$candidate"
-        IOS_LABEL_EFFECTIVE="${label:-default}"
-        return 0
-      fi
-    done
   done < "$PROFILE_IOS_FILE"
 
   LAST_ERROR="no_ios_simulator_for_profile"
   return 1
+}
+
+ios_device_class_from_label() {
+  local label="${1:-}"
+  local class_hint="${2:-}"
+  local normalized
+
+  normalized="$(printf '%s' "$class_hint" | tr '[:upper:]' '[:lower:]')"
+  case "$normalized" in
+    latest-phone|small-phone|large-phone)
+      printf '%s\n' "$normalized"
+      return
+      ;;
+  esac
+
+  normalized="$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ "$normalized" == *"small"* ]]; then
+    printf 'small-phone\n'
+    return
+  fi
+  if [[ "$normalized" == *"large"* ]]; then
+    printf 'large-phone\n'
+    return
+  fi
+  printf 'latest-phone\n'
+}
+
+resolve_ios_target() {
+  local label="${1:-latest-phone}"
+  local primary="${2:-}"
+  local fallback_list="${3:-}"
+  local runtime="${4:-}"
+  local device_type="${5:-}"
+  local class_hint="${6:-}"
+  local device_class
+  local resolver_output
+
+  if [[ ! -x "$IOS_RESOLVER_SCRIPT" ]]; then
+    LAST_ERROR="ios_resolver_missing"
+    return 1
+  fi
+
+  device_class="$(ios_device_class_from_label "$label" "$class_hint")"
+
+  if ! resolver_output="$(python3 "$IOS_RESOLVER_SCRIPT" --label "$label" --name "$primary" --fallbacks "$fallback_list" --runtime "$runtime" --device-type "$device_type" --device-class "$device_class" 2>/dev/null)"; then
+    LAST_ERROR="ios_resolve_failed"
+    return 1
+  fi
+
+  IOS_SIMULATOR_NAME_EFFECTIVE="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $1}')"
+  IOS_SIMULATOR_UDID="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $2}')"
+  IOS_RUNTIME_EFFECTIVE="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $3}')"
+  IOS_DEVICE_TYPE_EFFECTIVE="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $4}')"
+  IOS_DEVICE_CLASS_EFFECTIVE="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $6}')"
+
+  if [[ -z "$IOS_SIMULATOR_NAME_EFFECTIVE" || -z "$IOS_SIMULATOR_UDID" ]]; then
+    LAST_ERROR="ios_resolve_incomplete"
+    return 1
+  fi
+
+  return 0
 }
 
 emit_android_target_rows() {
@@ -656,17 +974,25 @@ emit_ios_target_rows() {
     return
   fi
 
-  printf 'default\tiPhone 17 Pro Max\t\n'
+  printf 'default\t\t\n'
 }
 
 select_android_candidate() {
   local primary="$1"
   local fallback_list="$2"
-  local emulator_bin="$HOME/Library/Android/sdk/emulator/emulator"
+  local sdk_root
+  local emulator_bin
   local available_avds
   local candidates
   local candidate
 
+  sdk_root="$(find_android_sdk_root || true)"
+  if [[ -z "$sdk_root" ]]; then
+    LAST_ERROR="android_sdk_root_not_found"
+    return 1
+  fi
+
+  emulator_bin="$sdk_root/emulator/emulator"
   if [[ ! -x "$emulator_bin" ]]; then
     LAST_ERROR="android_emulator_not_found"
     return 1
@@ -700,6 +1026,11 @@ select_android_candidate() {
       printf '%s\n' "$candidate"
       return 0
     fi
+
+    if ensure_android_avd_from_profile "$candidate"; then
+      printf '%s\n' "${ANDROID_AVD_NAME_EFFECTIVE:-$candidate}"
+      return 0
+    fi
   done
 
   LAST_ERROR="no_android_avd_for_label"
@@ -707,37 +1038,19 @@ select_android_candidate() {
 }
 
 select_ios_candidate() {
-  local primary="$1"
-  local fallback_list="$2"
-  local candidates
-  local candidate
-  local candidate_udid
+  local label="$1"
+  local primary="$2"
+  local fallback_list="$3"
+  local runtime="$4"
+  local device_type="$5"
+  local class_hint="${6:-}"
 
-  candidates="$primary"
-  if [[ -n "$fallback_list" ]]; then
-    if [[ -n "$candidates" ]]; then
-      candidates="$candidates|$fallback_list"
-    else
-      candidates="$fallback_list"
-    fi
+  if resolve_ios_target "$label" "$primary" "$fallback_list" "$runtime" "$device_type" "$class_hint"; then
+    printf '%s\n' "$IOS_SIMULATOR_NAME_EFFECTIVE"
+    return 0
   fi
 
-  if [[ -z "$candidates" ]]; then
-    candidates="iPhone 17 Pro Max"
-  fi
-
-  IFS='|' read -r -a candidate_array <<< "$candidates"
-  for candidate in "${candidate_array[@]}"; do
-    candidate="$(printf '%s' "$candidate" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
-    [[ -z "$candidate" ]] && continue
-    candidate_udid="$(find_ios_simulator_udid_by_name "$candidate")"
-    if [[ -n "$candidate_udid" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  LAST_ERROR="no_ios_simulator_for_label"
+  LAST_ERROR="${LAST_ERROR:-no_ios_simulator_for_label}"
   return 1
 }
 
@@ -783,8 +1096,30 @@ find_booted_device_for_avd() {
   return 1
 }
 
+shutdown_other_android_emulators() {
+  local target_avd="${1:-}"
+  local device_id
+  local running_avd
+
+  while read -r device_id; do
+    [[ -z "$device_id" ]] && continue
+    [[ "$device_id" != emulator-* ]] && continue
+
+    running_avd="$(adb -s "$device_id" emu avd name 2>/dev/null | tr -d '\r' | awk 'NF { print; exit }')"
+    if [[ -n "$target_avd" && "$running_avd" == "$target_avd" ]]; then
+      continue
+    fi
+
+    echo "Stopping other Android emulator: ${running_avd:-unknown} ($device_id)"
+    adb -s "$device_id" emu kill >/dev/null 2>&1 || true
+  done < <(adb devices | awk 'NR > 1 && $1 ~ /^emulator-/ { print $1 }')
+
+  sleep 3
+}
+
 ensure_android_environment() {
   local requested_avd="${1:-}"
+  local sdk_root
   local emulator_bin
   local avd_name
   local deadline
@@ -795,7 +1130,13 @@ ensure_android_environment() {
     return 1
   fi
 
-  emulator_bin="$HOME/Library/Android/sdk/emulator/emulator"
+  sdk_root="$(find_android_sdk_root || true)"
+  if [[ -z "$sdk_root" ]]; then
+    LAST_ERROR="android_sdk_root_not_found"
+    return 1
+  fi
+
+  emulator_bin="$sdk_root/emulator/emulator"
   if [[ ! -x "$emulator_bin" ]]; then
     LAST_ERROR="android_emulator_not_found"
     return 1
@@ -823,25 +1164,68 @@ ensure_android_environment() {
     return 1
   fi
 
+  echo "Preparing Android environment for requested AVD: $avd_name"
+
+  if ! ensure_android_avd_from_profile "$avd_name"; then
+    return 1
+  fi
+
+  if [[ -n "$ANDROID_AVD_NAME_EFFECTIVE" ]]; then
+    avd_name="$ANDROID_AVD_NAME_EFFECTIVE"
+  fi
+
+  echo "Using Android AVD: $avd_name"
+  echo "Host-compatible ABI: ${ANDROID_ABI_EFFECTIVE:-unknown}"
+  echo "System image: ${ANDROID_SYSTEM_IMAGE_EFFECTIVE:-unknown}"
+
   ANDROID_AVD_NAME_EFFECTIVE="$avd_name"
 
   existing_device_id="$(find_booted_device_for_avd "$avd_name" || true)"
   if [[ -n "$existing_device_id" ]]; then
+    echo "Android AVD already booted: $avd_name ($existing_device_id)"
+    if ! android_wait_for_device_ready "$existing_device_id"; then
+      return 1
+    fi
     ANDROID_DEVICE_ID="$existing_device_id"
     return 0
   fi
 
+  shutdown_other_android_emulators "$avd_name"
+
   mkdir -p "$(current_log_dir)"
-  "$emulator_bin" -avd "$avd_name" -no-snapshot-load > "$(current_log_dir)/android_emulator_boot.log" 2>&1 &
+  local boot_log_path
+  local emulator_pid
+  boot_log_path="$(current_log_dir)/android_emulator_boot.log"
+  "$emulator_bin" -avd "$avd_name" -no-snapshot-load > "$boot_log_path" 2>&1 &
+  emulator_pid=$!
+  echo "Started Android emulator pid=$emulator_pid avd=$avd_name"
+  echo "Android emulator boot log: $boot_log_path"
   sleep 5
 
   deadline=$((SECONDS + 300))
   while [[ $SECONDS -lt $deadline ]]; do
+    if ! kill -0 "$emulator_pid" 2>/dev/null; then
+      if grep -q "CPU Architecture .* is not supported" "$boot_log_path" 2>/dev/null; then
+        LAST_ERROR="android_emulator_incompatible_abi"
+      elif grep -q "FATAL" "$boot_log_path" 2>/dev/null; then
+        LAST_ERROR="android_emulator_start_failed"
+      else
+        LAST_ERROR="android_emulator_exited"
+      fi
+      echo "Android emulator exited early: $LAST_ERROR"
+      return 1
+    fi
+
     device_id="$(find_booted_device_for_avd "$avd_name" || true)"
     if [[ -n "$device_id" ]]; then
+      echo "Android emulator reported booted device: $device_id"
+      if ! android_wait_for_device_ready "$device_id"; then
+        return 1
+      fi
       ANDROID_DEVICE_ID="$device_id"
       return 0
     fi
+    echo "Waiting for Android emulator to boot: $avd_name"
     sleep 2
   done
 
@@ -864,41 +1248,29 @@ find_ios_simulator_udid_by_name() {
 
 ensure_ios_environment() {
   local requested_name="${1:-}"
-  local fallback_line
 
   if ! command -v xcrun >/dev/null 2>&1; then
     LAST_ERROR="xcrun_not_found"
     return 1
   fi
 
-  if [[ -n "$requested_name" ]]; then
+  if [[ -n "${IOS_SIMULATOR_UDID:-}" ]]; then
+    IOS_SIMULATOR_UDID="$IOS_SIMULATOR_UDID"
+    if [[ -z "$IOS_SIMULATOR_NAME_EFFECTIVE" ]]; then
+      IOS_SIMULATOR_NAME_EFFECTIVE="$requested_name"
+    fi
+  elif [[ -n "$requested_name" ]]; then
     IOS_SIMULATOR_NAME_EFFECTIVE="$requested_name"
+    IOS_SIMULATOR_UDID="$(find_ios_simulator_udid_by_name "$requested_name")"
   elif [[ -n "${IOS_SIMULATOR_NAME:-}" ]]; then
     requested_name="$IOS_SIMULATOR_NAME"
     IOS_SIMULATOR_NAME_EFFECTIVE="$requested_name"
-  else
-    if resolve_ios_simulator_from_profile; then
-      requested_name="$IOS_SIMULATOR_NAME_EFFECTIVE"
-    else
-      if [[ -s "$PROFILE_IOS_FILE" ]]; then
-        return 1
-      fi
-      requested_name="iPhone 17 Pro Max"
-      IOS_SIMULATOR_NAME_EFFECTIVE="$requested_name"
-    fi
+    IOS_SIMULATOR_UDID="$(find_ios_simulator_udid_by_name "$requested_name")"
   fi
 
-  IOS_SIMULATOR_UDID="$(find_ios_simulator_udid_by_name "$requested_name")"
-
   if [[ -z "$IOS_SIMULATOR_UDID" ]]; then
-    fallback_line="$(xcrun simctl list devices available | awk '/iPhone/ && match($0, /\(([0-9A-F-]+)\)/) { print; exit }')"
-    if [[ -z "$fallback_line" ]]; then
-      LAST_ERROR="ios_simulator_not_found"
-      return 1
-    fi
-
-    IOS_SIMULATOR_UDID="$(printf '%s\n' "$fallback_line" | sed -E 's/.*\(([0-9A-F-]+)\).*/\1/')"
-    IOS_SIMULATOR_NAME_EFFECTIVE="$(printf '%s\n' "$fallback_line" | sed -E 's/^[[:space:]]*([^()]+) \([0-9A-F-]+\).*/\1/' | sed -E 's/[[:space:]]+$//')"
+    LAST_ERROR="ios_simulator_not_found"
+    return 1
   fi
 
   open -a Simulator >/dev/null 2>&1 || true
@@ -927,21 +1299,38 @@ run_env_step_with_retry() {
 
   : > "$log_path"
   while [[ $attempt -le $MAX_ENV_RETRIES ]]; do
+    local pipe_path
+    local tee_pid
+    local attempt_exit
+
+    pipe_path="$(mktemp -u)"
+    mkfifo "$pipe_path"
+    tee -a "$log_path" < "$pipe_path" &
+    tee_pid=$!
+
+    set +e
     {
       echo "Attempt $((attempt + 1))/$((MAX_ENV_RETRIES + 1))"
       LAST_ERROR=""
       "$function_name" "$@"
-    } >> "$log_path" 2>&1 && {
+    } > "$pipe_path" 2>&1
+    attempt_exit=$?
+    set -e
+
+    wait "$tee_pid"
+    rm -f "$pipe_path"
+
+    if [[ $attempt_exit -eq 0 ]]; then
       status="PASS"
       retries="$attempt"
       reason=""
       break
-    }
+    fi
 
     reason="${LAST_ERROR:-env_not_ready}"
     if [[ $attempt -lt $MAX_ENV_RETRIES ]]; then
-      echo "Transient environment issue: $reason" >> "$log_path"
-      echo "Sleeping ${ENV_RETRY_WAIT_SECONDS}s before retry" >> "$log_path"
+      echo "Transient environment issue: $reason" | tee -a "$log_path"
+      echo "Sleeping ${ENV_RETRY_WAIT_SECONDS}s before retry" | tee -a "$log_path"
       sleep "$ENV_RETRY_WAIT_SECONDS"
     fi
     attempt=$((attempt + 1))
@@ -1032,6 +1421,7 @@ run_ios_smoke_step() {
 
 run_android_device_matrix() {
   local dependency_status
+  local android_rows_file
   local row
   local label
   local primary
@@ -1045,8 +1435,11 @@ run_android_device_matrix() {
   local device_runtime_id
 
   dependency_status="$(get_step_status "android_debug_build")"
+  android_rows_file="$(mktemp)"
+  emit_android_target_rows > "$android_rows_file"
 
-  while IFS= read -r row; do
+  exec 3< "$android_rows_file"
+  while IFS= read -r row <&3; do
     [[ -z "$row" ]] && continue
     label="$(printf '%s' "$row" | awk -F '\t' '{print $1}')"
     primary="$(printf '%s' "$row" | awk -F '\t' '{print $2}')"
@@ -1066,7 +1459,7 @@ run_android_device_matrix() {
       if [[ "$env_status" == "PASS" ]]; then
         device_runtime_id="$ANDROID_DEVICE_ID"
       fi
-      record_device_index "android" "$slug" "$label" "$selected_avd" "$device_runtime_id" "$device_dir"
+      record_device_index "android" "$slug" "$label" "${ANDROID_AVD_NAME_EFFECTIVE:-$selected_avd}" "$device_runtime_id" "$device_dir"
     else
       run_fail_step "${key_prefix}_env_ready" "Android [$label] environment readiness" "${LAST_ERROR:-android_target_unavailable}" "No available Android AVD for label '$label'."
       record_device_index "android" "$slug" "$label" "${primary:-<none>}" "" "$device_dir"
@@ -1077,7 +1470,7 @@ run_android_device_matrix() {
     fi
 
     if [[ "$dependency_status" == "PASS" && "$(get_step_status "${key_prefix}_env_ready")" == "PASS" ]]; then
-      run_command_step "${key_prefix}_install" "Android [$label] install debug" "./gradlew :androidApp:installDebug"
+      run_command_step "${key_prefix}_install" "Android [$label] install debug" "ANDROID_SERIAL=\"$ANDROID_DEVICE_ID\" ./gradlew :androidApp:installDebug"
     else
       run_skip_step "${key_prefix}_install" "Android [$label] install debug" "dependency_failed"
     fi
@@ -1090,10 +1483,13 @@ run_android_device_matrix() {
     fi
 
     STEP_LOG_DIR=""
-  done < <(emit_android_target_rows)
+  done
+  exec 3<&-
+  rm -f "$android_rows_file"
 }
 
 run_ios_device_matrix() {
+  local ios_rows_file
   local row
   local label
   local primary
@@ -1105,12 +1501,22 @@ run_ios_device_matrix() {
   local env_status
   local run_status
   local simulator_udid
+  local runtime
+  local device_type
+  local class_hint
 
-  while IFS= read -r row; do
+  ios_rows_file="$(mktemp)"
+  emit_ios_target_rows > "$ios_rows_file"
+
+  exec 3< "$ios_rows_file"
+  while IFS= read -r row <&3; do
     [[ -z "$row" ]] && continue
     label="$(printf '%s' "$row" | awk -F '\t' '{print $1}')"
     primary="$(printf '%s' "$row" | awk -F '\t' '{print $2}')"
     fallback_list="$(printf '%s' "$row" | awk -F '\t' '{print $3}')"
+    runtime="$(printf '%s' "$row" | awk -F '\t' '{print $4}')"
+    device_type="$(printf '%s' "$row" | awk -F '\t' '{print $5}')"
+    class_hint="$(printf '%s' "$row" | awk -F '\t' '{print $6}')"
     label="${label:-default}"
     slug="$(slugify "$label")"
     device_dir="$DEVICE_ROOT_DIR/ios/$slug"
@@ -1119,14 +1525,14 @@ run_ios_device_matrix() {
     STEP_LOG_DIR="$device_dir"
 
     selected_simulator=""
-    if selected_simulator="$(select_ios_candidate "$primary" "$fallback_list")"; then
+    if selected_simulator="$(select_ios_candidate "$label" "$primary" "$fallback_list" "$runtime" "$device_type" "$class_hint")"; then
       run_env_step_with_retry "${key_prefix}_env_ready" "iOS [$label] simulator readiness" "ensure_ios_environment" "$selected_simulator"
       env_status="$(get_step_status "${key_prefix}_env_ready")"
       simulator_udid=""
       if [[ "$env_status" == "PASS" ]]; then
         simulator_udid="$IOS_SIMULATOR_UDID"
       fi
-      record_device_index "ios" "$slug" "$label" "$selected_simulator" "$simulator_udid" "$device_dir"
+      record_device_index "ios" "$slug" "$label" "${selected_simulator} (${IOS_DEVICE_CLASS_EFFECTIVE:-latest-phone})" "$simulator_udid" "$device_dir"
     else
       run_fail_step "${key_prefix}_env_ready" "iOS [$label] simulator readiness" "${LAST_ERROR:-ios_target_unavailable}" "No available iOS simulator for label '$label'."
       record_device_index "ios" "$slug" "$label" "${primary:-<none>}" "" "$device_dir"
@@ -1139,7 +1545,7 @@ run_ios_device_matrix() {
 
     if [[ "$(get_step_status "${key_prefix}_env_ready")" == "PASS" ]]; then
       run_command_step "${key_prefix}_build" "iOS [$label] simulator build" "IOS_SIMULATOR_NAME=\"$IOS_SIMULATOR_NAME_EFFECTIVE\" IOS_SIMULATOR_UDID=\"$IOS_SIMULATOR_UDID\" make ios-build"
-      run_command_step "${key_prefix}_run" "iOS [$label] simulator run" "IOS_SIMULATOR_NAME=\"$IOS_SIMULATOR_NAME_EFFECTIVE\" make ios-run"
+      run_command_step "${key_prefix}_run" "iOS [$label] simulator run" "IOS_SIMULATOR_NAME=\"$IOS_SIMULATOR_NAME_EFFECTIVE\" IOS_SIMULATOR_UDID=\"$IOS_SIMULATOR_UDID\" IOS_SKIP_BUILD=1 make ios-run"
     else
       run_skip_step "${key_prefix}_build" "iOS [$label] simulator build" "dependency_failed"
       run_skip_step "${key_prefix}_run" "iOS [$label] simulator run" "dependency_failed"
@@ -1153,7 +1559,9 @@ run_ios_device_matrix() {
     fi
 
     STEP_LOG_DIR=""
-  done < <(emit_ios_target_rows)
+  done
+  exec 3<&-
+  rm -f "$ios_rows_file"
 }
 
 run_policy_scan_step() {
@@ -1401,22 +1809,43 @@ PY
 
 echo "[verify-rc] run id: $RUN_ID"
 echo "[verify-rc] output: $RUN_DIR"
+echo "[verify-rc] scope: $VERIFY_RC_SCOPE"
 
 run_profile_load_step
 run_profile_target_guard_step
 
 if [[ "$(get_step_status "profile_load")" == "PASS" && "$(get_step_status "profile_target_guard")" == "PASS" ]]; then
   STEP_LOG_DIR=""
-  run_command_step "shared_test" "Shared module tests" "make shared-test"
-  run_command_step "android_lint_unit" "Android lint and unit tests" "./gradlew :androidApp:lint :androidApp:testDebugUnitTest"
-  run_command_step "android_debug_build" "Android debug build" "make android-debug"
-
-  run_android_device_matrix
-  run_ios_device_matrix
-
-  STEP_LOG_DIR=""
-  run_policy_scan_step
-  run_manual_signoff_step
+  case "$VERIFY_RC_SCOPE" in
+    full)
+      run_command_step "shared_test" "Shared module tests" "make shared-test"
+      run_command_step "android_lint_unit" "Android lint and unit tests" "./gradlew :androidApp:lint :androidApp:testDebugUnitTest"
+      run_command_step "android_debug_build" "Android debug build" "make android-debug"
+      run_android_device_matrix
+      run_ios_device_matrix
+      STEP_LOG_DIR=""
+      run_policy_scan_step
+      run_manual_signoff_step
+      ;;
+    shared)
+      run_command_step "shared_test" "Shared module tests" "make shared-test"
+      ;;
+    android)
+      run_command_step "android_lint_unit" "Android lint and unit tests" "./gradlew :androidApp:lint :androidApp:testDebugUnitTest"
+      run_command_step "android_debug_build" "Android debug build" "make android-debug"
+      run_android_device_matrix
+      ;;
+    ios)
+      run_ios_device_matrix
+      ;;
+    gate)
+      run_policy_scan_step
+      run_manual_signoff_step
+      ;;
+    *)
+      run_fail_step "verify_scope" "Validate verify-rc scope" "invalid_verify_scope" "Unsupported VERIFY_RC_SCOPE '$VERIFY_RC_SCOPE'. Expected one of: full, shared, android, ios, gate."
+      ;;
+  esac
 else
   echo "[verify-rc] profile validation failed; skipping remaining steps."
 fi

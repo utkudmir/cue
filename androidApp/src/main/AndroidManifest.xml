@@ -4,8 +4,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:label="DebridHub"
-        android:theme="@style/Theme.DebridHub">
+        android:theme="@style/Theme.DebridHub"
+        android:usesCleartextTraffic="false">
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -17,7 +20,7 @@
         </provider>
 
         <receiver
-            android:name="com.utku.debridhub.shared.platform.ReminderAlarmReceiver"
+            android:name="app.debridhub.shared.platform.ReminderAlarmReceiver"
             android:exported="false" />
 
         <activity

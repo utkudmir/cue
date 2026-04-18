@@ -6,9 +6,9 @@
 - If docs and code disagree, trust executable sources (`Makefile`, Gradle files, scripts, code). Current docs still contain stale claims about iOS auth storage.
 
 ## Real Entrypoints / Wiring
-- Android runtime path: `androidApp/src/main/java/com/utku/debridhub/android/MainActivity.kt` -> `buildAndroidAppGraph` (`AndroidAppGraph.kt`) -> `DebridHubViewModel`.
+- Android runtime path: `androidApp MainActivity.kt` -> `buildAndroidAppGraph` (`AndroidAppGraph.kt`) -> `DebridHubViewModel`.
 - iOS runtime path: `iosApp/DebridHubHost/DebridHubApp.swift` -> `IOSAppViewModel.swift` -> `IosAppGraph` -> shared `DebridHubController`.
-- Shared app orchestration lives in `shared/src/commonMain/kotlin/com/utku/debridhub/shared/DebridHubController.kt`; when adding cross-platform behavior, wire both app graphs.
+- Shared app orchestration lives in `shared DebridHubController.kt`; when adding cross-platform behavior, wire both app graphs.
 
 ## Commands (Verified from Makefile/Gradle)
 - Preferred local commands:
@@ -16,12 +16,12 @@
   - `make android-debug` (runs `:androidApp:assembleDebug`)
   - `make ios-project`, `make ios-open`, `make ios-build`, `make ios-run`
 - Focused verification:
-  - Single shared test (example): `./gradlew :shared:iosSimulatorArm64Test --tests "com.utku.debridhub.shared.core.RealDebridErrorMessagesTest"`
+  - Single shared test (example): `./gradlew :shared:iosSimulatorArm64Test --tests "app.debridhub.shared.core.RealDebridErrorMessagesTest"`
   - Android lint + unit tests: `./gradlew :androidApp:lint :androidApp:testDebugUnitTest`
 
 ## Toolchain / iOS Script Quirks
 - JDK 21 is required; Make/iOS scripts auto-resolve `JAVA_HOME` with `/usr/libexec/java_home -v 21`.
-- iOS scripts default to simulator `iPhone 17 Pro Max`; override with `IOS_SIMULATOR_NAME="<device>"`.
+- iOS scripts resolve a phone-class simulator dynamically; override with `IOS_SIMULATOR_NAME="<device>"` or `IOS_DEVICE_CLASS="latest-phone|small-phone|large-phone"` when needed.
 - `make ios-run` builds to `build/ios-derived-data` by default; override with `DERIVED_DATA_PATH` if needed.
 - `iosApp/project.yml` targets iOS `18.0`; ensure your Xcode/simulator runtime matches.
 

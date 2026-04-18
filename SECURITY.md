@@ -18,6 +18,13 @@ Include:
 - logs or screenshots (with secrets redacted)
 - suggested fix (optional)
 
+If you are attaching local RC artifacts from `build/rc-verify`, generate a
+shareable copy first:
+
+```bash
+scripts/redact-shareable-report.sh build/rc-verify
+```
+
 ## Response Targets
 
 - Initial acknowledgment: within 72 hours

@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.utku.debridhub.android"
+    namespace = "app.debridhub.android"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.utku.debridhub"
+        applicationId = "app.debridhub"
         minSdk = 23
         targetSdk = 36
         versionCode = 1
@@ -68,4 +68,8 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    testImplementation(kotlin("test"))
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }

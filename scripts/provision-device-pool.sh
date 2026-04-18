@@ -3,13 +3,34 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERIFY_PROFILE="${VERIFY_PROFILE:-ci-pr}"
+PROVISION_TARGETS="${PROVISION_TARGETS:-all}"
 DEVICE_POOL_FILE="$ROOT_DIR/ci/device-pool.yml"
+IOS_RESOLVER_SCRIPT="$ROOT_DIR/scripts/resolve-ios-simulator.py"
 TMP_DIR="$(mktemp -d)"
 PROFILE_ANDROID_FILE="$TMP_DIR/profile-android.tsv"
 PROFILE_IOS_FILE="$TMP_DIR/profile-ios.tsv"
 
 ANDROID_FAILURES=0
 IOS_FAILURES=0
+WANT_ANDROID=0
+WANT_IOS=0
+
+case "$PROVISION_TARGETS" in
+  all)
+    WANT_ANDROID=1
+    WANT_IOS=1
+    ;;
+  android)
+    WANT_ANDROID=1
+    ;;
+  ios)
+    WANT_IOS=1
+    ;;
+  *)
+    echo "Unsupported PROVISION_TARGETS '$PROVISION_TARGETS'. Expected one of: all, android, ios" >&2
+    exit 1
+    ;;
+esac
 
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -20,6 +41,11 @@ fi
 
 if ! command -v python3 >/dev/null 2>&1; then
   echo "python3 is required to inspect iOS simulator JSON" >&2
+  exit 1
+fi
+
+if [[ ! -x "$IOS_RESOLVER_SCRIPT" ]]; then
+  echo "resolve-ios-simulator script is required: $IOS_RESOLVER_SCRIPT" >&2
   exit 1
 fi
 
@@ -123,13 +149,15 @@ File.open(profile_ios_file, "w") do |file|
   resolved["ios"].each do |entry|
     label = entry["label"].to_s
     simulator = entry["simulator"].to_s
-    next if simulator.empty?
+    device_class = entry["class"].to_s
+    simulator = device_class if simulator.empty?
+    next if label.empty? && simulator.empty?
 
     fallbacks = Array(entry["fallbacks"]).map(&:to_s).join("|")
     runtime = entry["runtime"].to_s
     device_type = entry["device_type"].to_s
 
-    file.puts([label, simulator, fallbacks, runtime, device_type].join("\t"))
+    file.puts([label, simulator, fallbacks, runtime, device_type, device_class].join("\t"))
   end
 end
 RUBY
@@ -177,6 +205,65 @@ android_avd_exists() {
   "$EMULATOR_BIN" -list-avds | awk -v target="$avd_name" '$0 == target { found = 1 } END { exit found ? 0 : 1 }'
 }
 
+android_host_arch() {
+  local arch
+  arch="$(uname -m 2>/dev/null || printf 'unknown')"
+  case "$arch" in
+    arm64|aarch64)
+      printf 'arm64-v8a\n'
+      ;;
+    x86_64|amd64)
+      printf 'x86_64\n'
+      ;;
+    *)
+      printf 'x86_64\n'
+      ;;
+  esac
+}
+
+android_target_abi_for_host() {
+  local requested_abi="${1:-}"
+  local preferred_abi
+  preferred_abi="$(android_host_arch)"
+
+  case "$requested_abi" in
+    arm64-v8a|x86_64)
+      printf '%s\n' "$preferred_abi"
+      ;;
+    '')
+      printf '%s\n' "$preferred_abi"
+      ;;
+    *)
+      printf '%s\n' "$requested_abi"
+      ;;
+  esac
+}
+
+android_system_image_for_abi() {
+  local system_image="${1:-}"
+  local target_abi="${2:-}"
+
+  if [[ -z "$system_image" || -z "$target_abi" ]]; then
+    printf '%s\n' "$system_image"
+    return
+  fi
+
+  printf '%s\n' "$system_image" | sed -E "s/(^|;)(x86_64|arm64-v8a)$/\\1${target_abi}/"
+}
+
+android_effective_avd_name() {
+  local avd_name="${1:-}"
+  local requested_abi="${2:-}"
+  local target_abi="${3:-}"
+
+  if [[ -z "$avd_name" || -z "$target_abi" || "$requested_abi" == "$target_abi" ]]; then
+    printf '%s\n' "$avd_name"
+    return
+  fi
+
+  printf '%s-%s\n' "$avd_name" "$target_abi"
+}
+
 provision_android_targets() {
   local row
   local label
@@ -186,6 +273,9 @@ provision_android_targets() {
   local abi
   local system_image
   local device_profile
+  local target_abi
+  local target_system_image
+  local effective_avd_name
 
   while IFS= read -r row; do
     [[ -z "$row" ]] && continue
@@ -198,42 +288,43 @@ provision_android_targets() {
     device_profile="$(printf '%s' "$row" | awk -F '\t' '{print $7}')"
     [[ -z "$avd_name" ]] && continue
 
-    if android_avd_exists "$avd_name"; then
-      echo "[android][$label] exists: $avd_name"
-      continue
-    fi
-
     if [[ -z "$system_image" ]]; then
       echo "[android][$label] missing system_image for $avd_name" >&2
       ANDROID_FAILURES=$((ANDROID_FAILURES + 1))
       continue
     fi
 
-    if [[ -z "$abi" ]]; then
-      abi="x86_64"
-    fi
+    target_abi="$(android_target_abi_for_host "$abi")"
+    target_system_image="$(android_system_image_for_abi "$system_image" "$target_abi")"
+    effective_avd_name="$(android_effective_avd_name "$avd_name" "$abi" "$target_abi")"
+    [[ -z "$effective_avd_name" ]] && effective_avd_name="$avd_name"
 
     if [[ -z "$device_profile" ]]; then
       device_profile="pixel"
     fi
 
-    echo "[android][$label] installing image: $system_image"
+    if android_avd_exists "$effective_avd_name"; then
+      echo "[android][$label] exists: $effective_avd_name"
+      continue
+    fi
+
+    echo "[android][$label] installing image: $target_system_image"
     set +o pipefail
-    if ! yes | "$SDKMANAGER_BIN" --install "$system_image" >/dev/null; then
+    if ! yes | "$SDKMANAGER_BIN" --install "$target_system_image" >/dev/null; then
       set -o pipefail
-      echo "[android][$label] failed to install image: $system_image" >&2
+      echo "[android][$label] failed to install image: $target_system_image" >&2
       ANDROID_FAILURES=$((ANDROID_FAILURES + 1))
       continue
     fi
     set -o pipefail
 
-    echo "[android][$label] creating avd: $avd_name"
-    printf 'no\n' | "$AVDMANAGER_BIN" create avd -n "$avd_name" -k "$system_image" --abi "$abi" -d "$device_profile" --force >/dev/null
+    echo "[android][$label] creating avd: $effective_avd_name"
+    printf 'no\n' | "$AVDMANAGER_BIN" create avd -n "$effective_avd_name" -k "$target_system_image" --abi "$target_abi" -d "$device_profile" --force >/dev/null
 
-    if android_avd_exists "$avd_name"; then
-      echo "[android][$label] provisioned: $avd_name"
+    if android_avd_exists "$effective_avd_name"; then
+      echo "[android][$label] provisioned: $effective_avd_name"
     else
-      echo "[android][$label] failed to provision: $avd_name" >&2
+      echo "[android][$label] failed to provision: $effective_avd_name" >&2
       ANDROID_FAILURES=$((ANDROID_FAILURES + 1))
     fi
   done < "$PROFILE_ANDROID_FILE"
@@ -271,34 +362,53 @@ raise SystemExit(1)
 PY
 }
 
-select_existing_ios_simulator() {
-  local primary="$1"
-  local fallback_list="$2"
-  local runtime_id="$3"
-  local candidates
-  local candidate
+ios_device_class_from_label() {
+  local label="${1:-}"
+  local class_hint="${2:-}"
+  local normalized
 
-  candidates="$primary"
-  if [[ -n "$fallback_list" ]]; then
-    if [[ -n "$candidates" ]]; then
-      candidates="$candidates|$fallback_list"
-    else
-      candidates="$fallback_list"
-    fi
+  normalized="$(printf '%s' "$class_hint" | tr '[:upper:]' '[:lower:]')"
+  case "$normalized" in
+    latest-phone|small-phone|large-phone)
+      printf '%s\n' "$normalized"
+      return
+      ;;
+  esac
+
+  normalized="$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')"
+  if [[ "$normalized" == *"small"* ]]; then
+    printf 'small-phone\n'
+    return
+  fi
+  if [[ "$normalized" == *"large"* ]]; then
+    printf 'large-phone\n'
+    return
+  fi
+  printf 'latest-phone\n'
+}
+
+resolve_ios_target() {
+  local label="$1"
+  local primary="$2"
+  local fallback_list="$3"
+  local runtime="$4"
+  local device_type="$5"
+  local class_hint="$6"
+  local device_class
+  local resolver_output
+
+  device_class="$(ios_device_class_from_label "$label" "$class_hint")"
+  if ! resolver_output="$(python3 "$IOS_RESOLVER_SCRIPT" --label "$label" --name "$primary" --fallbacks "$fallback_list" --runtime "$runtime" --device-type "$device_type" --device-class "$device_class" 2>/dev/null)"; then
+    return 1
   fi
 
-  IFS='|' read -r -a candidate_array <<< "$candidates"
-  for candidate in "${candidate_array[@]}"; do
-    candidate="$(printf '%s' "$candidate" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
-    [[ -z "$candidate" ]] && continue
+  IOS_RESOLVED_NAME="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $1}')"
+  IOS_RESOLVED_UDID="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $2}')"
+  IOS_RESOLVED_RUNTIME="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $3}')"
+  IOS_RESOLVED_DEVICE_TYPE="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $4}')"
+  IOS_RESOLVED_CLASS="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $6}')"
 
-    if ios_simulator_exists "$candidate" "$runtime_id"; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  return 1
+  [[ -n "$IOS_RESOLVED_NAME" && -n "$IOS_RESOLVED_UDID" ]]
 }
 
 provision_ios_targets() {
@@ -308,7 +418,7 @@ provision_ios_targets() {
   local fallback_list
   local runtime
   local device_type
-  local existing_simulator
+  local class_hint
 
   if ! command -v xcrun >/dev/null 2>&1; then
     echo "xcrun not found; skipping iOS provisioning" >&2
@@ -323,31 +433,18 @@ provision_ios_targets() {
     fallback_list="$(printf '%s' "$row" | awk -F '\t' '{print $3}')"
     runtime="$(printf '%s' "$row" | awk -F '\t' '{print $4}')"
     device_type="$(printf '%s' "$row" | awk -F '\t' '{print $5}')"
-    [[ -z "$simulator_name" ]] && continue
+    class_hint="$(printf '%s' "$row" | awk -F '\t' '{print $6}')"
 
-    existing_simulator=""
-    if existing_simulator="$(select_existing_ios_simulator "$simulator_name" "$fallback_list" "$runtime")"; then
-      echo "[ios][$label] exists: $existing_simulator"
-      continue
-    fi
-
-    if [[ -z "$runtime" || -z "$device_type" ]]; then
-      echo "[ios][$label] missing runtime/device_type for $simulator_name" >&2
+    if ! resolve_ios_target "$label" "$simulator_name" "$fallback_list" "$runtime" "$device_type" "$class_hint"; then
+      echo "[ios][$label] failed to resolve simulator dynamically" >&2
       IOS_FAILURES=$((IOS_FAILURES + 1))
       continue
     fi
 
-    echo "[ios][$label] creating simulator: $simulator_name"
-    if ! DEVELOPER_DIR="$DEVELOPER_DIR" xcrun simctl create "$simulator_name" "$device_type" "$runtime" >/dev/null; then
-      echo "[ios][$label] failed to create simulator: $simulator_name" >&2
-      IOS_FAILURES=$((IOS_FAILURES + 1))
-      continue
-    fi
-
-    if ios_simulator_exists "$simulator_name" "$runtime"; then
-      echo "[ios][$label] provisioned: $simulator_name"
+    if ios_simulator_exists "$IOS_RESOLVED_NAME" "$IOS_RESOLVED_RUNTIME"; then
+      echo "[ios][$label] resolved: $IOS_RESOLVED_NAME ($IOS_RESOLVED_CLASS)"
     else
-      echo "[ios][$label] create command returned but simulator missing: $simulator_name" >&2
+      echo "[ios][$label] resolved simulator missing after creation: $IOS_RESOLVED_NAME" >&2
       IOS_FAILURES=$((IOS_FAILURES + 1))
     fi
   done < "$PROFILE_IOS_FILE"
@@ -358,22 +455,17 @@ resolve_device_pool
 ANDROID_TARGET_COUNT="$(awk 'NF { count += 1 } END { print count + 0 }' "$PROFILE_ANDROID_FILE")"
 IOS_TARGET_COUNT="$(awk 'NF { count += 1 } END { print count + 0 }' "$PROFILE_IOS_FILE")"
 
-if [[ "$ANDROID_TARGET_COUNT" -eq 0 && "$IOS_TARGET_COUNT" -eq 0 ]]; then
-  echo "Profile '$VERIFY_PROFILE' has no Android or iOS targets" >&2
-  exit 1
-fi
-
-if [[ "$ANDROID_TARGET_COUNT" -eq 0 ]]; then
+if [[ "$WANT_ANDROID" -eq 1 && "$ANDROID_TARGET_COUNT" -eq 0 ]]; then
   echo "Profile '$VERIFY_PROFILE' has no Android targets" >&2
   exit 1
 fi
 
-if [[ "$IOS_TARGET_COUNT" -eq 0 ]]; then
+if [[ "$WANT_IOS" -eq 1 && "$IOS_TARGET_COUNT" -eq 0 ]]; then
   echo "Profile '$VERIFY_PROFILE' has no iOS targets" >&2
   exit 1
 fi
 
-if [[ -s "$PROFILE_ANDROID_FILE" ]]; then
+if [[ "$WANT_ANDROID" -eq 1 && -s "$PROFILE_ANDROID_FILE" ]]; then
   ANDROID_SDK_ROOT="$(find_android_sdk_root || true)"
   if [[ -z "$ANDROID_SDK_ROOT" ]]; then
     echo "Android SDK root not found; cannot provision Android pool" >&2
@@ -393,7 +485,7 @@ if [[ -s "$PROFILE_ANDROID_FILE" ]]; then
   fi
 fi
 
-if [[ -s "$PROFILE_IOS_FILE" ]]; then
+if [[ "$WANT_IOS" -eq 1 && -s "$PROFILE_IOS_FILE" ]]; then
   provision_ios_targets
 fi
 
@@ -402,4 +494,4 @@ if [[ "$ANDROID_FAILURES" -ne 0 || "$IOS_FAILURES" -ne 0 ]]; then
   exit 1
 fi
 
-echo "Provisioning completed successfully for profile: $VERIFY_PROFILE"
+echo "Provisioning completed successfully for profile: $VERIFY_PROFILE (targets=$PROVISION_TARGETS)"

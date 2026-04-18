@@ -51,6 +51,21 @@ For deterministic device preparation:
 VERIFY_PROFILE=ci-pr make provision-devices
 ```
 
+For iOS local runs, dynamic phone-class selection is the default. Optional
+overrides:
+
+```bash
+IOS_DEVICE_CLASS=latest-phone make ios-run
+IOS_SIMULATOR_NAME="<available-simulator-name>" make ios-run
+```
+
+Before sharing local `build/rc-verify` artifacts in issues or reviews, create a
+redacted copy:
+
+```bash
+scripts/redact-shareable-report.sh build/rc-verify
+```
+
 ## Pull Request Expectations
 
 Before opening a PR, ensure:

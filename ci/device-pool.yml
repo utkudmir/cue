@@ -1,9 +1,9 @@
 schema_version: 1
 
 defaults:
-  android_package: com.utku.debridhub
-  ios_bundle_id: com.utku.debridhub.ios
-  signoff_owner: utkudemir
+  android_package: app.debridhub
+  ios_bundle_id: app.debridhub.ios
+  signoff_owner: release-manager
 
 profiles:
   local-fast:
@@ -14,11 +14,10 @@ profiles:
         abi: arm64-v8a
         system_image: system-images;android-36;google_apis;arm64-v8a
         device_profile: pixel_8_pro
+        class: latest-phone
     ios:
       - label: latest-phone
-        simulator: iPhone 17 Pro Max
-        runtime: com.apple.CoreSimulator.SimRuntime.iOS-26-4
-        device_type: com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max
+        class: latest-phone
 
   ci-pr:
     android:
@@ -30,6 +29,7 @@ profiles:
         abi: x86_64
         system_image: system-images;android-24;google_apis;x86_64
         device_profile: pixel_2
+        class: min-edge-phone
       - label: latest
         avd: api36-phone
         fallbacks:
@@ -38,13 +38,10 @@ profiles:
         abi: arm64-v8a
         system_image: system-images;android-36;google_apis;arm64-v8a
         device_profile: pixel_8_pro
+        class: latest-phone
     ios:
       - label: latest-phone
-        simulator: iPhone 16 Pro
-        fallbacks:
-          - iPhone 16
-          - iPhone 15 Pro
-          - iPhone 14
+        class: latest-phone
 
   ci-nightly:
     android:
@@ -54,28 +51,26 @@ profiles:
         abi: x86_64
         system_image: system-images;android-24;google_apis;x86_64
         device_profile: pixel_2
+        class: min-edge-phone
       - label: mid
         avd: api30-phone
         api: 30
         abi: x86_64
         system_image: system-images;android-30;google_apis;x86_64
         device_profile: pixel_5
+        class: mid-phone
       - label: latest
         avd: api36-phone
         api: 36
         abi: arm64-v8a
         system_image: system-images;android-36;google_apis;arm64-v8a
         device_profile: pixel_8_pro
+        class: latest-phone
     ios:
       - label: small-screen
-        simulator: iPhone SE (3rd generation)
-        fallbacks:
-          - iPhone 13 mini
+        class: small-phone
       - label: large-screen
-        simulator: iPhone 16 Pro Max
-        fallbacks:
-          - iPhone 15 Pro Max
-          - iPhone 14 Pro Max
+        class: large-phone
 
   rc-full:
     includes:

@@ -53,8 +53,15 @@ PR trigger behavior:
 
 CI execution behavior:
 
-- Runner image is pinned: `macos-15`
-- Job timeout: `180` minutes (to cover `rc-full` matrix)
+- Runner strategy is optimized per phase:
+  - `schedule-gate` and `verify-gate` run on `ubuntu-24.04`
+  - `verify-shared`, `verify-android`, `verify-ios` run on `macos-15`
+- Workflow is split into job-level phases: `verify-shared`, `verify-android`,
+  `verify-ios`, `verify-gate`
+- Platform jobs run before final gate; `verify-gate` requires successful
+  completion of both Android and iOS verification jobs
+- Job timeouts: `verify-shared` 90m, `verify-android` 180m, `verify-ios` 180m,
+  `verify-gate` 60m
 - `cancel-in-progress` is enabled only for `pull_request` runs
 - Workflow prints explicit context logs for event/ref/profile/runner before
   provisioning and verification steps
@@ -65,23 +72,38 @@ Provision the canonical pool for a profile before running the gate in CI:
 VERIFY_PROFILE=ci-pr make provision-devices
 ```
 
+When provisioning only one platform target family:
+
+```bash
+VERIFY_PROFILE=ci-pr PROVISION_TARGETS=android make provision-devices
+VERIFY_PROFILE=ci-pr PROVISION_TARGETS=ios make provision-devices
+```
+
+`PROVISION_TARGETS` supports `all` (default), `android`, `ios`.
+
 Profiles are defined in `ci/device-pool.yml`. Profile includes are merged first,
 then the active profile overrides matching labels.
+
+Profiles are phone-only by intent. iOS targets resolve to iPhone simulator
+classes (`latest-phone`, `small-phone`, `large-phone`) and Android targets
+resolve to phone AVD recipes.
 
 `verify-rc` validates profile completeness before expensive steps. If the selected
 profile does not resolve to at least one Android target and one iOS target, the
 run fails early.
 
-`provision-devices` enforces the same rule and fails immediately when a selected
-profile is missing either Android or iOS targets.
+`provision-devices` with default `PROVISION_TARGETS=all` enforces the same rule
+and fails immediately when a selected profile is missing either Android or iOS
+targets. When `PROVISION_TARGETS` is set to `android` or `ios`, only that
+platform target set is required.
 
 Android pool entries support technical fields (`api`, `abi`, `system_image`,
 `device_profile`), and iOS entries support (`runtime`, `device_type`) to keep
 CI hosts deterministic.
 
 When runtime/device type fields are omitted for an iOS profile target,
-provisioning falls back to selecting an available simulator from
-`simulator` and `fallbacks` in order.
+provisioning uses dynamic iPhone resolution. It first selects an available
+simulator in the requested class and creates one when needed.
 
 Current profile intent:
 
@@ -96,6 +118,19 @@ The gate script writes artifacts to `build/rc-verify/<run_id>/` and includes:
 - `result.json` (machine-readable report)
 - `summary.txt` (human-readable report)
 - per-device logs in `devices/<platform>/<label>/`
+
+Before sharing local artifacts outside your machine, create a redacted copy:
+
+```bash
+scripts/redact-shareable-report.sh build/rc-verify/<run_id>
+```
+
+CI uploads these run directories per phase as:
+
+- `rc-verify-shared-artifacts`
+- `rc-verify-android-artifacts`
+- `rc-verify-ios-artifacts`
+- `rc-verify-gate-artifacts`
 
 The script retains only the latest 5 runs.
 
@@ -148,7 +183,7 @@ the sign-off table. Do not commit evidence files to git.
 
 ## Sign-Off (Single Owner)
 
-Only `utkudemir` can approve release sign-off.
+Only the configured `release-manager` reviewer can approve release sign-off.
 
 If a different reviewer name appears in sign-off, decision is automatically
 `NO-GO`.
@@ -166,4 +201,4 @@ Required fields:
 
 | candidate_commit | verify_rc_run_id | reviewer | date_utc | decision | notes |
 | --- | --- | --- | --- | --- | --- |
-| `<sha>` | `<run_id>` | `utkudemir` | `<YYYY-MM-DDTHH:MM:SSZ>` | `GO/NO-GO` | `<policy + App Store notes + evidence paths>` |
+| `<sha>` | `<run_id>` | `release-manager` | `<YYYY-MM-DDTHH:MM:SSZ>` | `GO/NO-GO` | `<policy + App Store notes + evidence paths>` |

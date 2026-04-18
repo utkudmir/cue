@@ -76,6 +76,14 @@ Build and run the iOS simulator app:
 make ios-run
 ```
 
+For phone-class preference during dynamic simulator resolution:
+
+```bash
+IOS_DEVICE_CLASS=latest-phone make ios-run
+```
+
+Supported iOS classes: `latest-phone`, `small-phone`, `large-phone`.
+
 Run the release-candidate verification gate:
 
 ```bash
@@ -90,10 +98,28 @@ VERIFY_PROFILE=ci-pr make verify-rc
 
 Device pools are defined in `ci/device-pool.yml`.
 
+Profiles are phone-only and resolved dynamically at runtime. If an expected
+phone simulator/AVD does not exist, provisioning and verify scripts create it
+from the profile recipe when possible.
+
+When you need to share local RC logs outside your machine, create a redacted
+copy first:
+
+```bash
+scripts/redact-shareable-report.sh build/rc-verify
+```
+
 Provision canonical simulators/AVDs for a profile:
 
 ```bash
 VERIFY_PROFILE=ci-pr make provision-devices
+```
+
+Provision only one platform when needed:
+
+```bash
+VERIFY_PROFILE=ci-pr PROVISION_TARGETS=android make provision-devices
+VERIFY_PROFILE=ci-pr PROVISION_TARGETS=ios make provision-devices
 ```
 
 Requirements:
@@ -111,6 +137,8 @@ CI quick notes:
 
 - Scheduled `rc-full` runs are guarded by repository variable `ENABLE_RC_FULL_SCHEDULE`; set it to `true` to enable weekday schedule execution.
 - Manual GitHub Actions runs (`workflow_dispatch`) expose `verify_profile` choices: `ci-pr`, `ci-nightly`, `rc-full`.
+- `verify-rc` workflow runs in phased jobs: `verify-shared`, `verify-android`, `verify-ios`, then `verify-gate`; the final gate requires both Android and iOS phases to succeed.
+- Non-mac orchestration phases (`schedule-gate`, `verify-gate`) run on Ubuntu runners to reduce macOS minute consumption.
 
 ## Security and Privacy
 
@@ -130,7 +158,8 @@ For private vulnerability reporting, follow [SECURITY.md](SECURITY.md).
 Current storage reality:
 
 - Android stores auth state with `EncryptedSharedPreferences`.
-- iOS stores auth state in Keychain and migrates legacy `NSUserDefaults` data.
+- iOS stores auth state in Keychain using `WhenUnlockedThisDeviceOnly` access and
+  migrates legacy `NSUserDefaults` data.
 
 The docs in this repository describe the current implementation as it exists
 today.

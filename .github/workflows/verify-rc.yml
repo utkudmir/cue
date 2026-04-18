@@ -58,14 +58,19 @@ concurrency:
   group: verify-rc-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+permissions:
+  contents: read
+
+env:
+  VERIFY_PROFILE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.verify_profile || (github.event_name == 'schedule' && 'rc-full' || 'ci-pr') }}
+
 jobs:
-  verify-rc:
+  schedule-gate:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: macos-15
-    timeout-minutes: 180
-    env:
-      VERIFY_PROFILE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.verify_profile || (github.event_name == 'schedule' && 'rc-full' || 'ci-pr') }}
-      ANDROID_SDK_ROOT: /Users/runner/Library/Android/sdk
+    runs-on: ubuntu-24.04
+    outputs:
+      enabled: ${{ steps.schedule_gate.outputs.enabled }}
+      verify_profile: ${{ steps.schedule_gate.outputs.verify_profile }}
     steps:
       - name: Schedule gate precheck
         id: schedule_gate
@@ -78,6 +83,7 @@ jobs:
           echo "sha: ${{ github.sha }}"
           echo "requested profile: $VERIFY_PROFILE"
           echo "schedule gate variable ENABLE_RC_FULL_SCHEDULE='${{ vars.ENABLE_RC_FULL_SCHEDULE }}'"
+          echo "verify_profile=$VERIFY_PROFILE" >> "$GITHUB_OUTPUT"
           if [[ "${{ github.event_name }}" == "schedule" && "${{ vars.ENABLE_RC_FULL_SCHEDULE }}" != "true" ]]; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "Skipping scheduled rc-full run: ENABLE_RC_FULL_SCHEDULE is not 'true'."
@@ -91,16 +97,77 @@ jobs:
           fi
           echo "effective profile: $VERIFY_PROFILE"
 
+  verify-shared:
+    needs: schedule-gate
+    if: needs['schedule-gate'].outputs.enabled == 'true'
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      VERIFY_PROFILE: ${{ needs['schedule-gate'].outputs.verify_profile }}
+      STEP_COMMAND_TIMEOUT_SECONDS: "1800"
+    steps:
       - name: Checkout
-        if: steps.schedule_gate.outputs.enabled == 'true'
         uses: actions/checkout@v4
 
       - name: Workflow context
-        if: steps.schedule_gate.outputs.enabled == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          echo "== verify-rc workflow context =="
+          echo "== verify-shared workflow context =="
+          echo "runner: $RUNNER_NAME"
+          echo "runner os: $RUNNER_OS"
+          echo "runner arch: $RUNNER_ARCH"
+          echo "workspace: $GITHUB_WORKSPACE"
+          echo "profile: $VERIFY_PROFILE"
+          echo "repository: $GITHUB_REPOSITORY"
+          echo "run id: $GITHUB_RUN_ID"
+          echo "run attempt: $GITHUB_RUN_ATTEMPT"
+          echo "actor: $GITHUB_ACTOR"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Verify Shared
+        shell: bash
+        env:
+          VERIFY_RC_SCOPE: shared
+        run: |
+          set -euo pipefail
+          echo "== verify shared scope =="
+          echo "profile: $VERIFY_PROFILE"
+          make verify-rc
+
+      - name: Upload RC artifacts (shared)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-verify-shared-artifacts
+          path: build/rc-verify/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  verify-android:
+    needs: schedule-gate
+    if: needs['schedule-gate'].outputs.enabled == 'true'
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      VERIFY_PROFILE: ${{ needs['schedule-gate'].outputs.verify_profile }}
+      ANDROID_SDK_ROOT: /Users/runner/Library/Android/sdk
+      STEP_COMMAND_TIMEOUT_SECONDS: "1800"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Workflow context
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "== verify-android workflow context =="
           echo "runner: $RUNNER_NAME"
           echo "runner os: $RUNNER_OS"
           echo "runner arch: $RUNNER_ARCH"
@@ -113,7 +180,6 @@ jobs:
           echo "actor: $GITHUB_ACTOR"
 
       - name: Set up JDK 21
-        if: steps.schedule_gate.outputs.enabled == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -121,7 +187,6 @@ jobs:
           cache: gradle
 
       - name: Accept Android SDK licenses
-        if: steps.schedule_gate.outputs.enabled == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -149,56 +214,161 @@ jobs:
           echo "android sdk licenses accepted"
 
       - name: Provision Device Pool
-        if: steps.schedule_gate.outputs.enabled == 'true'
         shell: bash
         run: |
           set -euo pipefail
           echo "== provisioning device pool =="
           echo "profile: $VERIFY_PROFILE"
-          make provision-devices
+          PROVISION_TARGETS=android make provision-devices
           echo "device pool provisioning completed"
 
-      - name: Verify RC Gate
-        if: steps.schedule_gate.outputs.enabled == 'true'
+      - name: Verify Android
         shell: bash
         env:
-          STEP_COMMAND_TIMEOUT_SECONDS: "1800"
+          VERIFY_RC_SCOPE: android
         run: |
           set -euo pipefail
-          echo "== verify rc gate =="
+          echo "== verify android scope =="
           echo "profile: $VERIFY_PROFILE"
-          echo "step command timeout seconds: ${STEP_COMMAND_TIMEOUT_SECONDS:-2400}"
-          set +e
-          make verify-rc &
-          VERIFY_PID=$!
-          set -e
+          make verify-rc
 
-          while kill -0 "$VERIFY_PID" 2>/dev/null; do
-            latest_run_dir=""
-            if [[ -d build/rc-verify ]]; then
-              latest_run_dir="$(ls -1dt build/rc-verify/* 2>/dev/null | head -n 1 || true)"
-            fi
-
-            if [[ -n "$latest_run_dir" && -f "$latest_run_dir/results.tsv" ]]; then
-              pass_count="$(awk -F '\t' '$3 == "PASS" { c += 1 } END { print c + 0 }' "$latest_run_dir/results.tsv")"
-              fail_count="$(awk -F '\t' '$3 == "FAIL" { c += 1 } END { print c + 0 }' "$latest_run_dir/results.tsv")"
-              warn_count="$(awk -F '\t' '$3 == "WARN" { c += 1 } END { print c + 0 }' "$latest_run_dir/results.tsv")"
-              skip_count="$(awk -F '\t' '$3 == "SKIP" { c += 1 } END { print c + 0 }' "$latest_run_dir/results.tsv")"
-              latest_step="$(awk -F '\t' 'NF { key=$1; status=$3 } END { if (key != "") print key "=" status }' "$latest_run_dir/results.tsv")"
-              echo "[verify-rc-progress] run=$(basename "$latest_run_dir") pass=$pass_count fail=$fail_count warn=$warn_count skip=$skip_count latest=${latest_step:-none}"
-            else
-              echo "[verify-rc-progress] waiting for first results entry..."
-            fi
-
-            sleep 20
-          done
-
-          wait "$VERIFY_PID"
-          echo "verify rc gate completed"
-
-      - name: Upload RC artifacts
-        if: always() && steps.schedule_gate.outputs.enabled == 'true'
+      - name: Upload RC artifacts (android)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rc-verify-artifacts
+          name: rc-verify-android-artifacts
           path: build/rc-verify/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  verify-ios:
+    needs: schedule-gate
+    if: needs['schedule-gate'].outputs.enabled == 'true'
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      VERIFY_PROFILE: ${{ needs['schedule-gate'].outputs.verify_profile }}
+      STEP_COMMAND_TIMEOUT_SECONDS: "1800"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Workflow context
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "== verify-ios workflow context =="
+          echo "runner: $RUNNER_NAME"
+          echo "runner os: $RUNNER_OS"
+          echo "runner arch: $RUNNER_ARCH"
+          echo "workspace: $GITHUB_WORKSPACE"
+          echo "profile: $VERIFY_PROFILE"
+          echo "repository: $GITHUB_REPOSITORY"
+          echo "run id: $GITHUB_RUN_ID"
+          echo "run attempt: $GITHUB_RUN_ATTEMPT"
+          echo "actor: $GITHUB_ACTOR"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Provision Device Pool
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "== provisioning device pool =="
+          echo "profile: $VERIFY_PROFILE"
+          PROVISION_TARGETS=ios make provision-devices
+          echo "device pool provisioning completed"
+
+      - name: Verify iOS
+        shell: bash
+        env:
+          VERIFY_RC_SCOPE: ios
+        run: |
+          set -euo pipefail
+          echo "== verify ios scope =="
+          echo "profile: $VERIFY_PROFILE"
+          make verify-rc
+
+      - name: Upload RC artifacts (ios)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-verify-ios-artifacts
+          path: build/rc-verify/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  verify-gate:
+    needs:
+      - schedule-gate
+      - verify-shared
+      - verify-android
+      - verify-ios
+    if: always() && needs['schedule-gate'].outputs.enabled == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      VERIFY_PROFILE: ${{ needs['schedule-gate'].outputs.verify_profile }}
+      STEP_COMMAND_TIMEOUT_SECONDS: "1800"
+    steps:
+      - name: Validate required platform jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "verify-shared result: ${{ needs['verify-shared'].result }}"
+          echo "verify-android result: ${{ needs['verify-android'].result }}"
+          echo "verify-ios result: ${{ needs['verify-ios'].result }}"
+          if [[ "${{ needs['verify-shared'].result }}" != "success" ]]; then
+            echo "verify-shared did not succeed" >&2
+            exit 1
+          fi
+          if [[ "${{ needs['verify-android'].result }}" != "success" ]]; then
+            echo "verify-android did not succeed" >&2
+            exit 1
+          fi
+          if [[ "${{ needs['verify-ios'].result }}" != "success" ]]; then
+            echo "verify-ios did not succeed" >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Workflow context
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "== verify-gate workflow context =="
+          echo "runner: $RUNNER_NAME"
+          echo "runner os: $RUNNER_OS"
+          echo "runner arch: $RUNNER_ARCH"
+          echo "workspace: $GITHUB_WORKSPACE"
+          echo "profile: $VERIFY_PROFILE"
+          echo "repository: $GITHUB_REPOSITORY"
+          echo "run id: $GITHUB_RUN_ID"
+          echo "run attempt: $GITHUB_RUN_ATTEMPT"
+          echo "actor: $GITHUB_ACTOR"
+
+      - name: Verify Gate
+        shell: bash
+        env:
+          VERIFY_RC_SCOPE: gate
+        run: |
+          set -euo pipefail
+          echo "== verify gate scope =="
+          echo "profile: $VERIFY_PROFILE"
+          make verify-rc
+
+      - name: Upload RC artifacts (gate)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-verify-gate-artifacts
+          path: build/rc-verify/
+          retention-days: 7
+          if-no-files-found: ignore

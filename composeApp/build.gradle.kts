@@ -64,7 +64,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.utku.debridhub.compose"
+    namespace = "app.debridhub.compose"
     compileSdk = 34
     defaultConfig {
         minSdk = 23

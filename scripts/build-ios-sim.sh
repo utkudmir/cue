@@ -3,18 +3,36 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$ROOT_DIR/build/ios-derived-data}"
-SIMULATOR_NAME="${IOS_SIMULATOR_NAME:-iPhone 17 Pro Max}"
+SIMULATOR_NAME="${IOS_SIMULATOR_NAME:-}"
 SIMULATOR_UDID="${IOS_SIMULATOR_UDID:-}"
+IOS_DEVICE_CLASS="${IOS_DEVICE_CLASS:-latest-phone}"
+IOS_RESOLVER_SCRIPT="$ROOT_DIR/scripts/resolve-ios-simulator.py"
 if [[ -z "${JAVA_HOME:-}" || ! -x "$JAVA_HOME/bin/java" ]]; then
   export JAVA_HOME="$("/usr/libexec/java_home" -v 21 2>/dev/null)"
 fi
 
 "$ROOT_DIR/scripts/generate-ios-project.sh"
 
+if [[ -z "$SIMULATOR_UDID" && -z "$SIMULATOR_NAME" ]]; then
+  if [[ ! -x "$IOS_RESOLVER_SCRIPT" ]]; then
+    echo "resolve-ios-simulator script is missing: $IOS_RESOLVER_SCRIPT" >&2
+    exit 1
+  fi
+  if ! resolver_output="$(python3 "$IOS_RESOLVER_SCRIPT" --label "$IOS_DEVICE_CLASS" 2>/dev/null)"; then
+    echo "Unable to resolve iPhone simulator dynamically. Set IOS_SIMULATOR_NAME or IOS_SIMULATOR_UDID." >&2
+    exit 1
+  fi
+  SIMULATOR_NAME="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $1}')"
+  SIMULATOR_UDID="$(printf '%s' "$resolver_output" | awk -F '\t' '{print $2}')"
+fi
+
 if [[ -n "$SIMULATOR_UDID" ]]; then
   DESTINATION="platform=iOS Simulator,id=$SIMULATOR_UDID"
-else
+elif [[ -n "$SIMULATOR_NAME" ]]; then
   DESTINATION="platform=iOS Simulator,name=$SIMULATOR_NAME"
+else
+  echo "IOS_SIMULATOR_UDID or IOS_SIMULATOR_NAME must be set for iOS simulator builds." >&2
+  exit 1
 fi
 
 xcodebuild \

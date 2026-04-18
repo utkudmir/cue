@@ -36,10 +36,13 @@ Build, install, and launch the app on the simulator:
 make ios-run
 ```
 
-You can override the simulator name if needed:
+Dynamic iPhone resolution is the default. You can override the preferred phone
+class or force a specific simulator when needed:
 
 ```bash
-IOS_SIMULATOR_NAME="iPhone 17 Pro Max" make ios-run
+IOS_DEVICE_CLASS=latest-phone make ios-run
+IOS_DEVICE_CLASS=small-phone make ios-run
+IOS_SIMULATOR_NAME="<available-simulator-name>" make ios-run
 ```
 
 ## How the integration works

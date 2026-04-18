@@ -4,7 +4,7 @@ options:
     iOS: "18.0"
 settings:
   base:
-    PRODUCT_BUNDLE_IDENTIFIER: com.utku.debridhub.ios
+    PRODUCT_BUNDLE_IDENTIFIER: app.debridhub.ios
     PRODUCT_NAME: DebridHub
     SWIFT_VERSION: "5.10"
     CODE_SIGN_STYLE: Automatic
@@ -27,9 +27,12 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: DebridHubHost/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
     preBuildScripts:
       - name: Build Shared Framework
-        basedOnDependencyAnalysis: false
+        basedOnDependencyAnalysis: true
+        outputFiles:
+          - $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/Shared.framework/Shared
         script: |
           set -euo pipefail
           REPO_ROOT="$SRCROOT/.."
