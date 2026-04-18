@@ -218,7 +218,14 @@ provision_android_targets() {
     fi
 
     echo "[android][$label] installing image: $system_image"
-    yes | "$SDKMANAGER_BIN" --install "$system_image" >/dev/null
+    set +o pipefail
+    if ! yes | "$SDKMANAGER_BIN" --install "$system_image" >/dev/null; then
+      set -o pipefail
+      echo "[android][$label] failed to install image: $system_image" >&2
+      ANDROID_FAILURES=$((ANDROID_FAILURES + 1))
+      continue
+    fi
+    set -o pipefail
 
     echo "[android][$label] creating avd: $avd_name"
     printf 'no\n' | "$AVDMANAGER_BIN" create avd -n "$avd_name" -k "$system_image" --abi "$abi" -d "$device_profile" --force >/dev/null
