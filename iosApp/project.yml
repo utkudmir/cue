@@ -44,10 +44,32 @@ targets:
     dependencies:
       - framework: ../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/Shared.framework
         embed: true
+  DebridHubHostTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: DebridHubHostTests
+    dependencies:
+      - target: DebridHubHost
+      - framework: ../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/Shared.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.debridhub.ios.tests
+        PRODUCT_NAME: DebridHubHostTests
+        SWIFT_MODULE_NAME: DebridHubHostTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DebridHub.app/DebridHub"
+        BUNDLE_LOADER: "$(TEST_HOST)"
 schemes:
   DebridHubHost:
     build:
       targets:
         DebridHubHost: all
+        DebridHubHostTests: [test]
+    test:
+      gatherCoverageData: false
+      targets:
+        - name: DebridHubHostTests
     run:
       config: Debug

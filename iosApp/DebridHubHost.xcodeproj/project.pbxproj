@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		36E49109797BDD687F86077B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9204C036EA4A301EF591282 /* ContentView.swift */; };
+		3FBFE826388213084EEFEBA8 /* Shared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E4AE850A4B72C8CF0B39504 /* Shared.framework */; };
+		739C7D89D26973212FA28C18 /* Shared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1E4AE850A4B72C8CF0B39504 /* Shared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		7565AF7AF387225F7F60DDFA /* IOSAppViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F42FE98C6FB40165E02C80E /* IOSAppViewModelTests.swift */; };
 		80790370E3E9F9160FF3CA00 /* Shared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E4AE850A4B72C8CF0B39504 /* Shared.framework */; };
 		9F5708DCBD6A2E5159F62BD4 /* IOSAppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAEA340595C0556876307764 /* IOSAppViewModel.swift */; };
 		C6DC042C3AB8717092AD56CD /* DebridHubApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1867AE7CB826BD3B8E0CE678 /* DebridHubApp.swift */; };
@@ -15,7 +18,28 @@
 		EC404BED5EB583102F3EA452 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9501E2417D64B7A98CF74418 /* LaunchScreen.storyboard */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		C8874601B7202762BFD8F4D4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F982FFCEF3C2F901DC6747C2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E31AFC00ACBA98EC6F628C82;
+			remoteInfo = DebridHubHost;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
+		1E1E4E783E3C2FE3C5106355 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				739C7D89D26973212FA28C18 /* Shared.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B1F864759AD75FE9EC37B74B /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -33,12 +57,22 @@
 		0F34BB3B44E383FC97E182D7 /* DebridHubHost.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DebridHubHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1867AE7CB826BD3B8E0CE678 /* DebridHubApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebridHubApp.swift; sourceTree = "<group>"; };
 		1E4AE850A4B72C8CF0B39504 /* Shared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Shared.framework; path = "../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/Shared.framework"; sourceTree = "<group>"; };
+		208F2A1AAAADBCD12C46E2A7 /* DebridHubHostTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DebridHubHostTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F42FE98C6FB40165E02C80E /* IOSAppViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAppViewModelTests.swift; sourceTree = "<group>"; };
 		9501E2417D64B7A98CF74418 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		B9204C036EA4A301EF591282 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		FAEA340595C0556876307764 /* IOSAppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAppViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A3435672C1041F7BD03CA0D6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3FBFE826388213084EEFEBA8 /* Shared.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E36F8205EE858D8390005960 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -54,6 +88,7 @@
 			isa = PBXGroup;
 			children = (
 				0F34BB3B44E383FC97E182D7 /* DebridHubHost.app */,
+				208F2A1AAAADBCD12C46E2A7 /* DebridHubHostTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -62,6 +97,7 @@
 			isa = PBXGroup;
 			children = (
 				8CC2CB5D80D7F72A4164C392 /* DebridHubHost */,
+				C5702487C14639712212F701 /* DebridHubHostTests */,
 				CF2BB63CF57591EB63929B79 /* Frameworks */,
 				0ABBA50E078B98941303C41D /* Products */,
 			);
@@ -78,6 +114,14 @@
 			path = DebridHubHost;
 			sourceTree = "<group>";
 		};
+		C5702487C14639712212F701 /* DebridHubHostTests */ = {
+			isa = PBXGroup;
+			children = (
+				4F42FE98C6FB40165E02C80E /* IOSAppViewModelTests.swift */,
+			);
+			path = DebridHubHostTests;
+			sourceTree = "<group>";
+		};
 		CF2BB63CF57591EB63929B79 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -89,6 +133,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		06AE696ECCD6C1E07256E3B4 /* DebridHubHostTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FFDE58A3BE03D52C4C69ADF1 /* Build configuration list for PBXNativeTarget "DebridHubHostTests" */;
+			buildPhases = (
+				5291832BA943FE6E92653171 /* Sources */,
+				A3435672C1041F7BD03CA0D6 /* Frameworks */,
+				1E1E4E783E3C2FE3C5106355 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				32A4280931C52E8C921EF229 /* PBXTargetDependency */,
+			);
+			name = DebridHubHostTests;
+			packageProductDependencies = (
+			);
+			productName = DebridHubHostTests;
+			productReference = 208F2A1AAAADBCD12C46E2A7 /* DebridHubHostTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		E31AFC00ACBA98EC6F628C82 /* DebridHubHost */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A7EBBE384410E64F69B15C12 /* Build configuration list for PBXNativeTarget "DebridHubHost" */;
@@ -119,6 +183,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					06AE696ECCD6C1E07256E3B4 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					E31AFC00ACBA98EC6F628C82 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -140,6 +208,7 @@
 			projectRoot = "";
 			targets = (
 				E31AFC00ACBA98EC6F628C82 /* DebridHubHost */,
+				06AE696ECCD6C1E07256E3B4 /* DebridHubHostTests */,
 			);
 		};
 /* End PBXProject section */
@@ -178,6 +247,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		5291832BA943FE6E92653171 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7565AF7AF387225F7F60DDFA /* IOSAppViewModelTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BE96FA097691D4B976CC8604 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -190,7 +267,39 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		32A4280931C52E8C921EF229 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E31AFC00ACBA98EC6F628C82 /* DebridHubHost */;
+			targetProxy = C8874601B7202762BFD8F4D4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		88C3C9F3C8AE0B9663129E77 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)\"",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.debridhub.ios.tests;
+				PRODUCT_NAME = DebridHubHostTests;
+				SDKROOT = iphoneos;
+				SWIFT_MODULE_NAME = DebridHubHostTests;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DebridHub.app/DebridHub";
+			};
+			name = Release;
+		};
 		9039542DDB28820108E46EF6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -305,6 +414,30 @@
 			};
 			name = Debug;
 		};
+		C2DD0C7C3E28104D5D3F1546 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)\"",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.debridhub.ios.tests;
+				PRODUCT_NAME = DebridHubHostTests;
+				SDKROOT = iphoneos;
+				SWIFT_MODULE_NAME = DebridHubHostTests;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DebridHub.app/DebridHub";
+			};
+			name = Debug;
+		};
 		F7D8CFBD0288B026C5F86D24 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -389,6 +522,15 @@
 			buildConfigurations = (
 				AB8FDC1E9C20CB341274FDF6 /* Debug */,
 				9FFBB6463B68D1F22344A213 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FFDE58A3BE03D52C4C69ADF1 /* Build configuration list for PBXNativeTarget "DebridHubHostTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C2DD0C7C3E28104D5D3F1546 /* Debug */,
+				88C3C9F3C8AE0B9663129E77 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

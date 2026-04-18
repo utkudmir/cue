@@ -3,6 +3,153 @@ import Shared
 import UIKit
 import UserNotifications
 
+enum AuthorizationPollState: Equatable {
+    case pending
+    case authorized
+    case expired
+    case denied
+    case failure(String)
+    case unexpected
+}
+
+struct AuthorizationSessionState {
+    let userCode: String
+    let verificationURL: String
+    let directVerificationURL: String?
+    let expiresAt: Kotlinx_datetimeInstant?
+    let pollIntervalSeconds: Int64
+}
+
+protocol IOSAppServiceProtocol: AnyObject {
+    func close()
+    func getReminderConfigSnapshot() async throws -> ReminderConfigSnapshot
+    func isAuthenticated() async throws -> Bool
+    func startAuthorization() async throws -> AuthorizationSessionState
+    func pollAuthorization() async throws -> AuthorizationPollState
+    func refreshAccountStatus() async throws -> AccountStatus
+    func syncReminders() async throws -> Int
+    func previewReminders() async throws -> [ScheduledReminder]
+    func requestNotificationPermission() async throws -> Bool
+    func updateReminderConfigSnapshot(snapshot: ReminderConfigSnapshot) async throws
+    func disconnect() async throws
+    func exportDiagnostics() async throws -> ExportedFile
+    func previewDiagnostics() async throws -> String
+}
+
+protocol NotificationPermissionStateProviding {
+    func currentState() async -> NotificationPermissionState
+}
+
+protocol SettingsOpening {
+    func openAppSettings()
+}
+
+private final class IOSAppService: IOSAppServiceProtocol {
+    private let graph: IosAppGraph
+
+    init(appVersion: String) {
+        graph = IosAppGraph(appVersion: appVersion)
+    }
+
+    func close() {
+        graph.close()
+    }
+
+    func getReminderConfigSnapshot() async throws -> ReminderConfigSnapshot {
+        try await graph.controller.getReminderConfigSnapshot()
+    }
+
+    func isAuthenticated() async throws -> Bool {
+        let value = try await graph.controller.isAuthenticated()
+        return value.boolValue
+    }
+
+    func startAuthorization() async throws -> AuthorizationSessionState {
+        let session = try await graph.controller.startAuthorization()
+        return AuthorizationSessionState(
+            userCode: session.userCode,
+            verificationURL: session.verificationUrl,
+            directVerificationURL: session.directVerificationUrl,
+            expiresAt: session.expiresAt,
+            pollIntervalSeconds: session.pollIntervalSeconds
+        )
+    }
+
+    func pollAuthorization() async throws -> AuthorizationPollState {
+        let result = try await graph.controller.pollAuthorization()
+        switch result {
+        case is AuthPollResultPending:
+            return .pending
+        case is AuthPollResultAuthorized:
+            return .authorized
+        case is AuthPollResultExpired:
+            return .expired
+        case is AuthPollResultDenied:
+            return .denied
+        case let failure as AuthPollResultFailure:
+            return .failure(failure.message)
+        default:
+            return .unexpected
+        }
+    }
+
+    func refreshAccountStatus() async throws -> AccountStatus {
+        try await graph.controller.refreshAccountStatus()
+    }
+
+    func syncReminders() async throws -> Int {
+        Int(truncating: try await graph.controller.syncReminders())
+    }
+
+    func previewReminders() async throws -> [ScheduledReminder] {
+        try await graph.controller.previewReminders()
+    }
+
+    func requestNotificationPermission() async throws -> Bool {
+        let result = try await graph.controller.requestNotificationPermission()
+        return result.boolValue
+    }
+
+    func updateReminderConfigSnapshot(snapshot: ReminderConfigSnapshot) async throws {
+        try await graph.controller.updateReminderConfigSnapshot(snapshot: snapshot)
+    }
+
+    func disconnect() async throws {
+        try await graph.controller.disconnect()
+    }
+
+    func exportDiagnostics() async throws -> ExportedFile {
+        try await graph.controller.exportDiagnostics()
+    }
+
+    func previewDiagnostics() async throws -> String {
+        try await graph.controller.previewDiagnostics()
+    }
+}
+
+private struct SystemNotificationPermissionStateProvider: NotificationPermissionStateProviding {
+    func currentState() async -> NotificationPermissionState {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            return .granted
+        case .denied:
+            return .denied
+        case .notDetermined:
+            return .notDetermined
+        @unknown default:
+            return .unknown
+        }
+    }
+}
+
+private struct SystemSettingsOpener: SettingsOpening {
+    func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+}
+
 struct AuthorizationBrowserTarget: Identifiable, Equatable {
     let url: URL
     var id: String { url.absoluteString }
@@ -43,25 +190,39 @@ final class IOSAppViewModel: ObservableObject {
         notifyOnExpiry: true,
         notifyAfterExpiry: false
     )
-    private let graph = IosAppGraph(appVersion: "1.0.0")
+    private let service: any IOSAppServiceProtocol
+    private let notificationPermissionProvider: any NotificationPermissionStateProviding
+    private let settingsOpener: any SettingsOpening
     private var pollingTask: Task<Void, Never>?
 
     deinit {
-        graph.close()
+        service.close()
     }
 
-    init() {
-        Task {
-            await bootstrap()
+    init(
+        service: any IOSAppServiceProtocol = IOSAppService(appVersion: "1.0.0"),
+        notificationPermissionProvider: any NotificationPermissionStateProviding = SystemNotificationPermissionStateProvider(),
+        settingsOpener: any SettingsOpening = SystemSettingsOpener(),
+        autoBootstrap: Bool = true
+    ) {
+        self.service = service
+        self.notificationPermissionProvider = notificationPermissionProvider
+        self.settingsOpener = settingsOpener
+
+        if autoBootstrap {
+            Task {
+                await bootstrap()
+            }
+        } else {
+            isCheckingSession = false
         }
     }
 
     func bootstrap() async {
         await refreshNotificationPermissionState()
         do {
-            reminderConfig = try await graph.controller.getReminderConfigSnapshot()
-            let authState = try await graph.controller.isAuthenticated()
-            isAuthenticated = authState.boolValue
+            reminderConfig = try await service.getReminderConfigSnapshot()
+            isAuthenticated = try await service.isAuthenticated()
             isCheckingSession = false
             if isAuthenticated {
                 await refreshAccount()
@@ -78,13 +239,13 @@ final class IOSAppViewModel: ObservableObject {
         clearAuthorizationSession()
         Task {
             do {
-                let session = try await graph.controller.startAuthorization()
+                let session = try await service.startAuthorization()
                 userCode = session.userCode
-                verificationURL = session.verificationUrl
-                directVerificationURL = session.directVerificationUrl
+                verificationURL = session.verificationURL
+                directVerificationURL = session.directVerificationURL
                 authorizationExpiresAt = session.expiresAt
                 authorizationPollIntervalSeconds = session.pollIntervalSeconds
-                if let browserURL = URL(string: session.directVerificationUrl ?? session.verificationUrl) {
+                if let browserURL = URL(string: session.directVerificationURL ?? session.verificationURL) {
                     authorizationBrowserTarget = AuthorizationBrowserTarget(url: browserURL)
                 }
                 pollAuthorization(interval: session.pollIntervalSeconds)
@@ -107,10 +268,10 @@ final class IOSAppViewModel: ObservableObject {
         errorMessage = nil
         do {
             await refreshNotificationPermissionState()
-            reminderConfig = try await graph.controller.getReminderConfigSnapshot()
-            accountStatus = try await graph.controller.refreshAccountStatus()
-            _ = try await graph.controller.syncReminders()
-            scheduledReminders = try await graph.controller.previewReminders()
+            reminderConfig = try await service.getReminderConfigSnapshot()
+            accountStatus = try await service.refreshAccountStatus()
+            _ = try await service.syncReminders()
+            scheduledReminders = try await service.previewReminders()
         } catch {
             showError(error)
         }
@@ -122,12 +283,11 @@ final class IOSAppViewModel: ObservableObject {
             defer { isRequestingNotifications = false }
             clearMessages()
             do {
-                let permissionResult = try await graph.controller.requestNotificationPermission()
-                let granted = permissionResult.boolValue
+                let granted = try await service.requestNotificationPermission()
                 await refreshNotificationPermissionState()
                 if isAuthenticated {
-                    _ = try await graph.controller.syncReminders()
-                    scheduledReminders = try await graph.controller.previewReminders()
+                    _ = try await service.syncReminders()
+                    scheduledReminders = try await service.previewReminders()
                 }
                 if granted {
                     infoMessage = "Notifications enabled."
@@ -142,8 +302,7 @@ final class IOSAppViewModel: ObservableObject {
     }
 
     func openAppSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        UIApplication.shared.open(url)
+        settingsOpener.openAppSettings()
     }
 
     func exportDiagnostics() {
@@ -152,7 +311,7 @@ final class IOSAppViewModel: ObservableObject {
             defer { isExporting = false }
             clearMessages()
             do {
-                let file = try await graph.controller.exportDiagnostics()
+                let file = try await service.exportDiagnostics()
                 infoMessage = "Diagnostics exported to \(file.location)"
             } catch {
                 showError(error)
@@ -167,7 +326,7 @@ final class IOSAppViewModel: ObservableObject {
             defer { isLoadingDiagnosticsPreview = false }
             errorMessage = nil
             do {
-                diagnosticsPreview = try await graph.controller.previewDiagnostics()
+                diagnosticsPreview = try await service.previewDiagnostics()
             } catch {
                 showError(error)
             }
@@ -180,12 +339,12 @@ final class IOSAppViewModel: ObservableObject {
         clearAuthorizationSession()
         Task {
             do {
-                try await graph.controller.disconnect()
+                try await service.disconnect()
                 isAuthenticated = false
                 accountStatus = nil
                 diagnosticsPreview = nil
                 scheduledReminders = []
-                reminderConfig = try await graph.controller.getReminderConfigSnapshot()
+                reminderConfig = try await service.getReminderConfigSnapshot()
                 clearAuthorizationSession()
                 infoMessage = "Disconnected from Real-Debrid."
             } catch {
@@ -267,29 +426,29 @@ final class IOSAppViewModel: ObservableObject {
         pollingTask = Task {
             while !Task.isCancelled {
                 do {
-                    let result = try await graph.controller.pollAuthorization()
+                    let result = try await service.pollAuthorization()
                     switch result {
-                    case is AuthPollResultPending:
+                    case .pending:
                         try? await Task.sleep(for: .seconds(Double(interval)))
-                    case is AuthPollResultAuthorized:
+                    case .authorized:
                         isAuthenticated = true
                         clearAuthorizationSession()
                         infoMessage = "Authorization completed."
                         await refreshAccount()
                         return
-                    case is AuthPollResultExpired:
+                    case .expired:
                         clearAuthorizationSession()
                         showErrorMessage("The device authorization session expired.")
                         return
-                    case is AuthPollResultDenied:
+                    case .denied:
                         clearAuthorizationSession()
                         showErrorMessage("Real-Debrid denied the authorization request.")
                         return
-                    case let failure as AuthPollResultFailure:
+                    case let .failure(message):
                         clearAuthorizationSession()
-                        showErrorMessage(failure.message)
+                        showErrorMessage(message)
                         return
-                    default:
+                    case .unexpected:
                         clearAuthorizationSession()
                         showErrorMessage("Unexpected authorization state.")
                         return
@@ -307,17 +466,7 @@ final class IOSAppViewModel: ObservableObject {
     }
 
     private func refreshNotificationPermissionState() async {
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
-        switch settings.authorizationStatus {
-        case .authorized, .provisional, .ephemeral:
-            notificationPermissionState = .granted
-        case .denied:
-            notificationPermissionState = .denied
-        case .notDetermined:
-            notificationPermissionState = .notDetermined
-        @unknown default:
-            notificationPermissionState = .unknown
-        }
+        notificationPermissionState = await notificationPermissionProvider.currentState()
     }
 
     private func updateReminderConfig(_ updated: ReminderConfigSnapshot) {
@@ -325,11 +474,11 @@ final class IOSAppViewModel: ObservableObject {
         Task {
             do {
                 errorMessage = nil
-                try await graph.controller.updateReminderConfigSnapshot(snapshot: updated)
+                try await service.updateReminderConfigSnapshot(snapshot: updated)
                 if isAuthenticated {
                     await refreshNotificationPermissionState()
-                    _ = try await graph.controller.syncReminders()
-                    scheduledReminders = try await graph.controller.previewReminders()
+                    _ = try await service.syncReminders()
+                    scheduledReminders = try await service.previewReminders()
                 }
             } catch {
                 showError(error)
