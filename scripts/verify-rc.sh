@@ -700,6 +700,8 @@ android_avd_exists() {
 
 ensure_android_avd_from_profile() {
   local avd_name="$1"
+  local requested_avd_base
+  local source_avd_name
   local sdk_root
   local emulator_bin
   local sdkmanager_bin
@@ -713,6 +715,8 @@ ensure_android_avd_from_profile() {
   local target_abi
   local target_system_image
   local effective_avd_name
+
+  requested_avd_base="$(printf '%s' "$avd_name" | sed -E 's/-(arm64-v8a|x86_64)$//')"
 
   sdk_root="$(find_android_sdk_root || true)"
   if [[ -z "$sdk_root" ]]; then
@@ -742,7 +746,7 @@ ensure_android_avd_from_profile() {
   while IFS= read -r row; do
     [[ -z "$row" ]] && continue
     row_avd="$(printf '%s' "$row" | awk -F '\t' '{print $2}')"
-    [[ "$row_avd" != "$avd_name" ]] && continue
+    [[ "$row_avd" != "$avd_name" && "$row_avd" != "$requested_avd_base" ]] && continue
     api="$(printf '%s' "$row" | awk -F '\t' '{print $4}')"
     abi="$(printf '%s' "$row" | awk -F '\t' '{print $5}')"
     system_image="$(printf '%s' "$row" | awk -F '\t' '{print $6}')"
@@ -757,7 +761,14 @@ ensure_android_avd_from_profile() {
 
   target_abi="$(android_target_abi_for_host "$abi")"
   target_system_image="$(android_system_image_for_abi "$system_image" "$target_abi")"
-  effective_avd_name="$(android_effective_avd_name "$avd_name" "$abi" "$target_abi")"
+  source_avd_name="$row_avd"
+  if [[ -z "$source_avd_name" ]]; then
+    source_avd_name="$requested_avd_base"
+  fi
+  if [[ -z "$source_avd_name" ]]; then
+    source_avd_name="$avd_name"
+  fi
+  effective_avd_name="$(android_effective_avd_name "$source_avd_name" "$abi" "$target_abi")"
 
   if [[ -z "$effective_avd_name" ]]; then
     effective_avd_name="$avd_name"
@@ -1195,8 +1206,24 @@ ensure_android_environment() {
   mkdir -p "$(current_log_dir)"
   local boot_log_path
   local emulator_pid
+  local -a emulator_args
   boot_log_path="$(current_log_dir)/android_emulator_boot.log"
-  "$emulator_bin" -avd "$avd_name" -no-snapshot-load > "$boot_log_path" 2>&1 &
+  emulator_args=(
+    -avd "$avd_name"
+    -no-snapshot-load
+    -no-snapshot-save
+    -no-boot-anim
+    -noaudio
+    -camera-back none
+    -camera-front none
+  )
+  if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+    emulator_args+=(
+      -no-window
+      -gpu swiftshader_indirect
+    )
+  fi
+  "$emulator_bin" "${emulator_args[@]}" > "$boot_log_path" 2>&1 &
   emulator_pid=$!
   echo "Started Android emulator pid=$emulator_pid avd=$avd_name"
   echo "Android emulator boot log: $boot_log_path"
