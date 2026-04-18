@@ -1,79 +1,90 @@
 # Session Handoff
 
 ## Durum Ozeti
-- CI billing/spending limiti acilana kadar CI calismalarini parkta tutuyoruz.
-- Uygulama tarafinda parity + stability + test coverage odakli ilerliyoruz.
-- iOS keychain edge-case self-heal ve Android/iOS akis parity duzeltmeleri `main`'e pushlandi.
-- Coverage altyapisi ve yeni testler localde hazir; bu degisiklikler henuz commit/push edilmedi.
+- CI billing/spending limiti acilana kadar CI/workflow tarafini parkta tutuyoruz.
+- Uygulama kodu ve testlerde Android/iOS parity + stability + coverage odaginda ilerliyoruz.
+- Coverage gate aktif: `LINE >= 70`, `BRANCH >= 55`.
+- iOS native XCTest altyapisi aktif ve `IOSAppViewModel` senaryo paritesi Android ile hizalandi.
 
 ## Son Tamamlanan Isler
 
-### 1) Pushlanan parity ve iOS auth stabilizasyonu
+### 1) Pushlanan parity + auth stabilizasyonu
 - Commit: `67a360b` (`origin/main`)
-- iOS keychain `status=-50` gibi hatalarda teknik hata gostermek yerine sessiz self-heal.
+- iOS keychain `status=-50` gibi hatalarda sessiz self-heal.
 - iOS onboarding/polling terminal state cleanup.
-- iOS/Android UI metin ve akislarini daha yakin parity seviyesine cekme.
+- Android/iOS akis ve mesaj parity iyilestirmeleri.
 
-### 2) Localde tamamlanan coverage/test guclendirme (commitlenmedi)
-- Jacoco tabanli coverage report + verification eklendi (Android unit test tabanli).
-- Coverage baseline: `LINE >= 70%`, `BRANCH >= 55%`.
-- `make coverage` target eklendi.
+### 2) Pushlanan coverage/test guclendirme
+- Commit: `d261431` (`origin/main`)
+- Jacoco report + verification eklendi.
+- Baseline korumasi: `LINE >= 70`, `BRANCH >= 55`.
 - Shared + Android test kapsamı genisletildi.
-- Android instrumentation smoke test eklendi.
 
-## Dogrulama Sonuclari
+### 3) Pushlanan iOS native test boslugu kapatma
+- Commit: `41a162a` (`origin/main`)
+- `iosApp/project.yml` uzerinden XCTest target eklendi.
+- Xcode proje regenerate edildi.
+- `IOSAppViewModel` icin temel state-transition testleri eklendi.
+
+### 4) Pushlanan Android/iOS test parity hizalama
+- Commit: `ea1b832` (`origin/main`)
+- `IOSAppViewModelTests` kapsamı Android ViewModel senaryo seti ile hizalandi.
+- Mevcut durumda ViewModel test sayisi parity: Android 16 / iOS 16.
+
+### 5) Lock-step TDD genisletmesi
+- `make ios-test` komutu ve `scripts/test-ios-sim.sh` eklendi.
+- Cancel authorization safety slice'i Android+iOS icin eklendi.
+- Diagnostics preview success slice'i Android+iOS icin eklendi.
+- Mevcut local parity: Android 18 / iOS 18.
+
+## Dogrulama Sonuclari (Son Session)
 - `make shared-test` -> PASS
 - `./gradlew :androidApp:lint :androidApp:testDebugUnitTest` -> PASS
 - `make coverage` -> PASS
 - `make ios-build` -> PASS
-- Android emulator kullanimi fiilen dogrulandi:
-  - `VERIFY_PROFILE=local-fast VERIFY_RC_SCOPE=android make verify-rc` calismasinda `emulator-5554` ile install+smoke PASS
-  - `make android-connected-test` -> PASS
+- `xcodebuild ... -scheme DebridHubHost ... test` -> PASS
 
-## Mevcut Local Degisiklikler (Commitlenmedi)
-- `Makefile`
-- `androidApp/build.gradle.kts`
-- `androidApp/src/test/java/app/debridhub/android/DebridHubViewModelTest.kt`
-- `docs/release-gate.md`
-- `shared/build.gradle.kts`
-- `androidApp/src/androidTest/java/app/debridhub/android/MainActivitySmokeTest.kt`
-- `androidApp/src/test/java/app/debridhub/android/SharedLogicCoverageTest.kt`
-- `shared/src/commonTest/kotlin/app/debridhub/shared/DebridHubControllerTest.kt`
-- `shared/src/commonTest/kotlin/app/debridhub/shared/data/remote/RealDebridApiTest.kt`
-- `shared/src/commonTest/kotlin/app/debridhub/shared/data/repository/AccountRepositoryImplTest.kt`
-- `shared/src/commonTest/kotlin/app/debridhub/shared/data/repository/ReminderRepositoryImplTest.kt`
-- `shared/src/commonTest/kotlin/app/debridhub/shared/domain/usecase/ComputeExpiryStateUseCaseTest.kt`
-- `shared/src/commonTest/kotlin/app/debridhub/shared/domain/usecase/ScheduleRemindersUseCaseTest.kt`
-- `docs/session-handoff.md`
+## Mevcut Local Durum
+- Calisma agaci temiz hedeflenir; yeni ise baslarken `git status` ile dogrula.
+- CI/workflow dosyalarina dokunma (billing limiti acilana kadar).
 
-## Planda Kalan Maddeler (Sonraki Session)
-1. Localde hazir coverage/test degisikliklerini son bir kez diff uzerinden gozden gecir.
-2. Tek mantikli commit olarak al (veya gerekiyorsa 2 mantikli commit'e bol), sonra `main`e pushla.
-3. Native iOS XCTest boslugunu kapat:
-   - `iosApp/project.yml` icinde test target ekle.
-   - `scripts/generate-ios-project.sh` ile proje regenerate et.
-   - `IOSAppViewModel` icin temel state-transition testleri yaz.
-4. iOS test + build dogrulamasini tekrar kos.
-5. iOS testleri oturunca coverage hedefini bir sonraki esige tasimayi degerlendir (`line 75`, `branch 60`).
+## Sonraki Plan (TDD, Lock-Step)
+Her madde Android + iOS icin birlikte, RED->GREEN->REFACTOR dikey slice olarak ilerlesin.
+
+1. Cancel authorization safety:
+   - Polling durur mu, onboarding/session state temizleniyor mu?
+2. Authenticated bootstrap happy path:
+   - Startup sonrasinda refresh/sync/preview etkileri dogrulansin.
+3. Reminder mutation matrix:
+   - `sevenDay`, `threeDay`, `oneDay`, `notifyOnExpiry`, `notifyAfterExpiry`.
+4. Diagnostics preview success path:
+   - Basarili yukleme ile preview/state dogrulansin.
+5. Duplicate/in-flight guard davranislari:
+   - Tekrarlayan start auth / diagnostics preview cagrilarinda idempotent davranis.
+6. Notification edge parity:
+   - Granted/already-granted/denied/failure metin ve akislarinin hizasi.
+
+## Coverage Hedefi (Bir Sonraki Esik)
+- Mevcut baseline korunurken testler stabilize oldugunda bir sonraki hedef:
+  - `LINE >= 75`
+  - `BRANCH >= 60`
 
 ## Teknik Notlar / Guardrail
 - Aktif Gradle modulleri: `:shared` ve `:androidApp` (`composeApp/` legacy).
 - iOS proje source of truth: `iosApp/project.yml` (xcodeproj regenerate edilir).
-- iOS runtime akisi:
-  - `iosApp/DebridHubHost/DebridHubApp.swift`
-  - `iosApp/DebridHubHost/IOSAppViewModel.swift`
-  - `shared/src/iosMain/kotlin/app/debridhub/shared/IosAppGraph.kt`
-- Shared orchestration: `shared/src/commonMain/kotlin/app/debridhub/shared/DebridHubController.kt`
-- Product boundary koru: sadece OAuth device flow + `/rest/1.0/user` + local reminders/diagnostics.
+- iOS runtime: `DebridHubApp.swift` -> `IOSAppViewModel.swift` -> `IosAppGraph` -> shared `DebridHubController`.
+- Shared orchestration: `shared/src/commonMain/kotlin/app/debridhub/shared/DebridHubController.kt`.
+- Product boundary koru: OAuth device flow + `/rest/1.0/user` + local reminders/diagnostics.
 - Eklenmeyecek alanlar: `/unrestrict/*`, `/downloads/*`, `/torrents/*`, `/streaming/*`.
 
 ## Yeni Session Baslatma Promptu (Kopyala-Yapistir)
-```
+```text
 Bu repo icin once docs/session-handoff.md dosyasini oku ve sadece oradaki plan uzerinden devam et.
 CI billing limiti acilana kadar CI/workflow tarafina dokunma; yalnizca uygulama kodu ve testlere odaklan.
 
-Ilk is olarak localde bekleyen coverage/test degisikliklerini gozden gecir, mantikli commit(ler) halinde tamamla ve pushla.
-Ardindan iOS native test boslugunu kapatmak icin iosApp/project.yml uzerinden XCTest target ekle, projeyi regenerate et, IOSAppViewModel state-transition testleri yaz ve iOS build/test dogrula.
+Android ve iOS testlerini TDD (RED->GREEN->REFACTOR) ve lock-step parity ile ilerlet.
+Her slice sonunda Android unit test, iOS XCTest ve coverage baseline dogrulamalarini calistir.
 
-Mevcut coverage baseline'i koru: line >= 70, branch >= 55. iOS testler oturursa bir sonraki adim olarak 75/60 artisini oner.
-``` 
+Coverage baseline'i koru: line >= 70, branch >= 55.
+Slice'lar stabilize olunca 75/60 esigine gecis icin ayri bir degisiklik oner.
+```

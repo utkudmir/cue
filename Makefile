@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help shared-test android-debug android-connected-test coverage ios-project ios-open ios-build ios-run verify-rc provision-devices
+.PHONY: help shared-test android-debug android-connected-test coverage ios-project ios-open ios-build ios-test ios-run verify-rc provision-devices
 
 help:
 	@echo "make shared-test  - Run shared Kotlin tests"
@@ -10,6 +10,7 @@ help:
 	@echo "make ios-project  - Generate the iOS Xcode project"
 	@echo "make ios-open     - Generate and open the iOS project in Xcode"
 	@echo "make ios-build    - Build the iOS simulator app"
+	@echo "make ios-test     - Run the iOS XCTest suite on simulator"
 	@echo "make ios-run      - Build, install, and launch the iOS simulator app"
 	@echo "make verify-rc    - Run release-candidate verification gate"
 	@echo "make provision-devices - Provision simulators/AVDs from device pool"
@@ -34,6 +35,9 @@ ios-open:
 
 ios-build:
 	./scripts/build-ios-sim.sh
+
+ios-test:
+	./scripts/test-ios-sim.sh
 
 ios-run:
 	./scripts/run-ios-sim.sh

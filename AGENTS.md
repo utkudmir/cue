@@ -3,7 +3,7 @@
 ## Repo Truths That Matter
 - Active Gradle modules are only `:shared` and `:androidApp` (`settings.gradle.kts`); `composeApp/` is legacy and not part of the active build.
 - iOS project files are generated from `iosApp/project.yml` via `xcodegen` (`scripts/generate-ios-project.sh`). Treat `project.yml` as source of truth; regenerate after iOS project config edits.
-- If docs and code disagree, trust executable sources (`Makefile`, Gradle files, scripts, code). Current docs still contain stale claims about iOS auth storage.
+- If docs and code disagree, trust executable sources (`Makefile`, Gradle files, scripts, code).
 
 ## Real Entrypoints / Wiring
 - Android runtime path: `androidApp MainActivity.kt` -> `buildAndroidAppGraph` (`AndroidAppGraph.kt`) -> `DebridHubViewModel`.
@@ -14,7 +14,7 @@
 - Preferred local commands:
   - `make shared-test` (runs `:shared:allTests`)
   - `make android-debug` (runs `:androidApp:assembleDebug`)
-  - `make ios-project`, `make ios-open`, `make ios-build`, `make ios-run`
+  - `make ios-project`, `make ios-open`, `make ios-build`, `make ios-test`, `make ios-run`
 - Focused verification:
   - Single shared test (example): `./gradlew :shared:iosSimulatorArm64Test --tests "app.debridhub.shared.core.RealDebridErrorMessagesTest"`
   - Android lint + unit tests: `./gradlew :androidApp:lint :androidApp:testDebugUnitTest`

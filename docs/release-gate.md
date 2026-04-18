@@ -148,9 +148,10 @@ Minimum automated pass requirements:
 4. `make android-debug`
 5. Android install + smoke launch
 6. `make ios-build`
-7. `make ios-run`
-8. iOS smoke launch
-9. Real-Debrid boundary scan (no forbidden endpoint integration in code)
+7. `make ios-test`
+8. `make ios-run`
+9. iOS smoke launch
+10. Real-Debrid boundary scan (no forbidden endpoint integration in code)
 
 Coverage baseline:
 

@@ -30,6 +30,12 @@ Build for the current simulator from the repo root:
 make ios-build
 ```
 
+Run native iOS unit tests (XCTest) on simulator:
+
+```bash
+make ios-test
+```
+
 Build, install, and launch the app on the simulator:
 
 ```bash
@@ -44,6 +50,17 @@ IOS_DEVICE_CLASS=latest-phone make ios-run
 IOS_DEVICE_CLASS=small-phone make ios-run
 IOS_SIMULATOR_NAME="<available-simulator-name>" make ios-run
 ```
+
+The same simulator selection overrides also apply to tests:
+
+```bash
+IOS_DEVICE_CLASS=latest-phone make ios-test
+IOS_DEVICE_CLASS=small-phone make ios-test
+IOS_SIMULATOR_NAME="<available-simulator-name>" make ios-test
+```
+
+Current iOS native regression suite includes `DebridHubHostTests` with
+`IOSAppViewModelTests` parity scenarios.
 
 ## How the integration works
 
