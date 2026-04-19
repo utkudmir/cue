@@ -32,6 +32,7 @@ MAX_ENV_RETRIES=2
 ENV_RETRY_WAIT_SECONDS=60
 KEEP_RUN_COUNT=5
 STEP_COMMAND_TIMEOUT_SECONDS="${STEP_COMMAND_TIMEOUT_SECONDS:-2400}"
+IOS_BOOT_TIMEOUT_SECONDS="${IOS_BOOT_TIMEOUT_SECONDS:-300}"
 VERIFY_RC_SCOPE="${VERIFY_RC_SCOPE:-full}"
 
 ANDROID_PACKAGE="app.debridhub"
@@ -330,6 +331,83 @@ PY
   fi
 
   complete_step "$key" "$label" "$status" "0" "$log_path" "$reason"
+}
+
+run_streaming_command_with_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  python3 - "$timeout_seconds" "$@" <<'PY'
+import os
+import select
+import signal
+import subprocess
+import sys
+import time
+
+timeout_seconds_raw = sys.argv[1]
+command = sys.argv[2:]
+
+try:
+    timeout_seconds = int(timeout_seconds_raw)
+except ValueError:
+    timeout_seconds = 300
+
+start = time.monotonic()
+process = subprocess.Popen(
+    command,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    text=True,
+    bufsize=1,
+    preexec_fn=os.setsid,
+)
+
+timed_out = False
+
+while True:
+    if process.stdout is None:
+        break
+
+    ready, _, _ = select.select([process.stdout], [], [], 1.0)
+    if ready:
+      line = process.stdout.readline()
+      if line:
+          sys.stdout.write(line)
+          sys.stdout.flush()
+
+    if process.poll() is not None:
+        break
+
+    if time.monotonic() - start > timeout_seconds:
+        timed_out = True
+        sys.stdout.write(f"[verify-rc] command timed out after {timeout_seconds}s\n")
+        sys.stdout.flush()
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        grace_deadline = time.monotonic() + 5
+        while process.poll() is None and time.monotonic() < grace_deadline:
+            time.sleep(0.1)
+        if process.poll() is None:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        break
+
+if process.stdout is not None:
+    remainder = process.stdout.read()
+    if remainder:
+        sys.stdout.write(remainder)
+        sys.stdout.flush()
+
+if timed_out:
+    raise SystemExit(124)
+
+raise SystemExit(process.returncode if process.returncode is not None else 1)
+PY
 }
 
 run_skip_step() {
@@ -1402,6 +1480,8 @@ find_ios_simulator_udid_by_name() {
 
 ensure_ios_environment() {
   local requested_name="${1:-}"
+  local boot_timeout_seconds="$IOS_BOOT_TIMEOUT_SECONDS"
+  local boot_rc=0
 
   if ! command -v xcrun >/dev/null 2>&1; then
     LAST_ERROR="xcrun_not_found"
@@ -1427,12 +1507,39 @@ ensure_ios_environment() {
     return 1
   fi
 
+  echo "Resolved iOS simulator: ${IOS_SIMULATOR_NAME_EFFECTIVE:-$requested_name} ($IOS_SIMULATOR_UDID)"
+  if [[ -n "$IOS_RUNTIME_EFFECTIVE" ]]; then
+    echo "Resolved iOS runtime: $IOS_RUNTIME_EFFECTIVE"
+  fi
+  if [[ -n "$IOS_DEVICE_TYPE_EFFECTIVE" ]]; then
+    echo "Resolved iOS device type: $IOS_DEVICE_TYPE_EFFECTIVE"
+  fi
+  if [[ -n "$IOS_DEVICE_CLASS_EFFECTIVE" ]]; then
+    echo "Resolved iOS device class: $IOS_DEVICE_CLASS_EFFECTIVE"
+  fi
+
+  echo "Launching Simulator.app"
   open -a Simulator >/dev/null 2>&1 || true
+  echo "Booting iOS simulator"
   xcrun simctl boot "$IOS_SIMULATOR_UDID" >/dev/null 2>&1 || true
-  if ! xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b; then
-    LAST_ERROR="ios_boot_timeout"
+
+  echo "Waiting for iOS simulator bootstatus (timeout: ${boot_timeout_seconds}s)"
+  set +e
+  run_streaming_command_with_timeout "$boot_timeout_seconds" xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b
+  boot_rc=$?
+  set -e
+  if [[ "$boot_rc" -ne 0 ]]; then
+    echo "Current simulator state for $IOS_SIMULATOR_UDID:"
+    xcrun simctl list devices available | awk -v target="$IOS_SIMULATOR_UDID" '$0 ~ target { print }' || true
+    if [[ "$boot_rc" -eq 124 ]]; then
+      LAST_ERROR="ios_boot_timeout"
+    else
+      LAST_ERROR="ios_boot_failed"
+    fi
     return 1
   fi
+
+  echo "iOS simulator ready: ${IOS_SIMULATOR_NAME_EFFECTIVE:-$requested_name} ($IOS_SIMULATOR_UDID)"
 
   return 0
 }
