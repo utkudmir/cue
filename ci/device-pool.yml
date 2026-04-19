@@ -21,15 +21,6 @@ profiles:
 
   ci-pr:
     android:
-      - label: min-edge
-        avd: api24-phone
-        fallbacks:
-          - api23-phone
-        api: 24
-        abi: x86_64
-        system_image: system-images;android-24;google_apis;x86_64
-        device_profile: pixel_2
-        class: min-edge-phone
       - label: latest
         avd: api36-phone
         fallbacks:
@@ -47,20 +38,17 @@ profiles:
     android:
       - label: min-edge
         avd: api24-phone
+        fallbacks:
+          - api23-phone
         api: 24
         abi: x86_64
         system_image: system-images;android-24;google_apis;x86_64
         device_profile: pixel_2
         class: min-edge-phone
-      - label: mid
-        avd: api30-phone
-        api: 30
-        abi: x86_64
-        system_image: system-images;android-30;google_apis;x86_64
-        device_profile: pixel_5
-        class: mid-phone
       - label: latest
         avd: api36-phone
+        fallbacks:
+          - api35-phone
         api: 36
         abi: arm64-v8a
         system_image: system-images;android-36;google_apis;arm64-v8a

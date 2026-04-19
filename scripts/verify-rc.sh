@@ -999,7 +999,23 @@ emit_android_target_rows() {
   fi
 
   if [[ -s "$PROFILE_ANDROID_FILE" ]]; then
-    cat "$PROFILE_ANDROID_FILE"
+    if [[ -n "${VERIFY_RC_ANDROID_LABELS:-}" ]]; then
+      awk -F '\t' -v labels_csv="$VERIFY_RC_ANDROID_LABELS" '
+        BEGIN {
+          split(labels_csv, entries, ",")
+          for (idx in entries) {
+            label = entries[idx]
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", label)
+            if (label != "") {
+              wanted[label] = 1
+            }
+          }
+        }
+        NF && ($1 in wanted) { print }
+      ' "$PROFILE_ANDROID_FILE"
+    else
+      cat "$PROFILE_ANDROID_FILE"
+    fi
     return
   fi
 
@@ -1013,7 +1029,23 @@ emit_ios_target_rows() {
   fi
 
   if [[ -s "$PROFILE_IOS_FILE" ]]; then
-    cat "$PROFILE_IOS_FILE"
+    if [[ -n "${VERIFY_RC_IOS_LABELS:-}" ]]; then
+      awk -F '\t' -v labels_csv="$VERIFY_RC_IOS_LABELS" '
+        BEGIN {
+          split(labels_csv, entries, ",")
+          for (idx in entries) {
+            label = entries[idx]
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", label)
+            if (label != "") {
+              wanted[label] = 1
+            }
+          }
+        }
+        NF && ($1 in wanted) { print }
+      ' "$PROFILE_IOS_FILE"
+    else
+      cat "$PROFILE_IOS_FILE"
+    fi
     return
   fi
 
@@ -1607,6 +1639,12 @@ run_android_device_matrix() {
   android_rows_file="$(mktemp)"
   emit_android_target_rows > "$android_rows_file"
 
+  if [[ ! -s "$android_rows_file" ]]; then
+    run_fail_step "android_matrix" "Android device matrix" "android_target_filter_empty" "No Android targets matched the requested label filter."
+    rm -f "$android_rows_file"
+    return
+  fi
+
   exec 3< "$android_rows_file"
   while IFS= read -r row <&3; do
     [[ -z "$row" ]] && continue
@@ -1676,6 +1714,12 @@ run_ios_device_matrix() {
 
   ios_rows_file="$(mktemp)"
   emit_ios_target_rows > "$ios_rows_file"
+
+  if [[ ! -s "$ios_rows_file" ]]; then
+    run_fail_step "ios_matrix" "iOS device matrix" "ios_target_filter_empty" "No iOS targets matched the requested label filter."
+    rm -f "$ios_rows_file"
+    return
+  fi
 
   exec 3< "$ios_rows_file"
   while IFS= read -r row <&3; do

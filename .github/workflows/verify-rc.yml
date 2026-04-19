@@ -48,7 +48,7 @@ on:
         description: Device pool profile to run
         required: false
         type: choice
-        default: rc-full
+        default: ci-pr
         options:
           - ci-pr
           - ci-nightly
@@ -62,7 +62,6 @@ permissions:
   contents: read
 
 env:
-  VERIFY_PROFILE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.verify_profile || (github.event_name == 'schedule' && 'rc-full' || 'ci-pr') }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
@@ -72,7 +71,12 @@ jobs:
     outputs:
       enabled: ${{ steps.schedule_gate.outputs.enabled }}
       verify_profile: ${{ steps.schedule_gate.outputs.verify_profile }}
+      android_matrix: ${{ steps.schedule_gate.outputs.android_matrix }}
+      ios_matrix: ${{ steps.schedule_gate.outputs.ios_matrix }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Schedule gate precheck
         id: schedule_gate
         shell: bash
@@ -82,21 +86,33 @@ jobs:
           echo "event: ${{ github.event_name }}"
           echo "ref: ${{ github.ref }}"
           echo "sha: ${{ github.sha }}"
-          echo "requested profile: $VERIFY_PROFILE"
           echo "schedule gate variable ENABLE_RC_FULL_SCHEDULE='${{ vars.ENABLE_RC_FULL_SCHEDULE }}'"
-          echo "verify_profile=$VERIFY_PROFILE" >> "$GITHUB_OUTPUT"
+
+          effective_profile="ci-pr"
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            effective_profile="ci-nightly"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.verify_profile }}" ]]; then
+            effective_profile="${{ github.event.inputs.verify_profile }}"
+          fi
+
+          echo "requested profile: $effective_profile"
+          echo "verify_profile=$effective_profile" >> "$GITHUB_OUTPUT"
+
           if [[ "${{ github.event_name }}" == "schedule" && "${{ vars.ENABLE_RC_FULL_SCHEDULE }}" != "true" ]]; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping scheduled rc-full run: ENABLE_RC_FULL_SCHEDULE is not 'true'."
+            echo "Skipping scheduled verify run: ENABLE_RC_FULL_SCHEDULE is not 'true'."
           else
             echo "enabled=true" >> "$GITHUB_OUTPUT"
-            if [[ "${{ github.event_name }}" == "schedule" ]]; then
-              echo "Scheduled rc-full run is enabled by ENABLE_RC_FULL_SCHEDULE=true."
-            else
-              echo "Non-schedule event; proceeding with verify-rc workflow."
-            fi
           fi
-          echo "effective profile: $VERIFY_PROFILE"
+
+          android_matrix="$(ruby scripts/device-pool-matrix.rb "$effective_profile" android)"
+          ios_matrix="$(ruby scripts/device-pool-matrix.rb "$effective_profile" ios)"
+
+          echo "android matrix: $android_matrix"
+          echo "ios matrix: $ios_matrix"
+
+          echo "android_matrix=$android_matrix" >> "$GITHUB_OUTPUT"
+          echo "ios_matrix=$ios_matrix" >> "$GITHUB_OUTPUT"
 
   verify-shared:
     needs: schedule-gate
@@ -151,20 +167,13 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  verify-android:
-    needs:
-      - schedule-gate
-      - verify-shared
+  verify-android-build:
+    needs: schedule-gate
     if: needs['schedule-gate'].outputs.enabled == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 90
     env:
       VERIFY_PROFILE: ${{ needs['schedule-gate'].outputs.verify_profile }}
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      ANDROID_USER_HOME: /home/runner/.android
-      ANDROID_EMULATOR_HOME: /home/runner/.android
-      ANDROID_AVD_HOME: /home/runner/.android/avd
-      STEP_COMMAND_TIMEOUT_SECONDS: "1800"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -173,13 +182,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "== verify-android workflow context =="
+          echo "== verify-android-build workflow context =="
           echo "runner: $RUNNER_NAME"
           echo "runner os: $RUNNER_OS"
           echo "runner arch: $RUNNER_ARCH"
           echo "workspace: $GITHUB_WORKSPACE"
           echo "profile: $VERIFY_PROFILE"
-          echo "android sdk root: $ANDROID_SDK_ROOT"
           echo "repository: $GITHUB_REPOSITORY"
           echo "run id: $GITHUB_RUN_ID"
           echo "run attempt: $GITHUB_RUN_ATTEMPT"
@@ -192,158 +200,145 @@ jobs:
           java-version: "21"
           cache: gradle
 
-      - name: Accept Android SDK licenses
+      - name: Verify Android build and unit scope
         shell: bash
         run: |
           set -euo pipefail
-          SDKMANAGER_BIN=""
-          for candidate in \
-            "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
-            "$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager" \
-            "$ANDROID_SDK_ROOT/tools/bin/sdkmanager"; do
-            if [[ -x "$candidate" ]]; then
-              SDKMANAGER_BIN="$candidate"
-              break
-            fi
-          done
-          if [[ -z "$SDKMANAGER_BIN" ]]; then
-            echo "sdkmanager not found under $ANDROID_SDK_ROOT" >&2
-            exit 1
-          fi
-          echo "using sdkmanager: $SDKMANAGER_BIN"
-          set +o pipefail
-          if ! yes | "$SDKMANAGER_BIN" --licenses >/dev/null; then
-            echo "Failed to accept Android SDK licenses" >&2
-            exit 1
-          fi
-          set -o pipefail
-          echo "android sdk licenses accepted"
+          ./gradlew :androidApp:lint :androidApp:testDebugUnitTest :androidApp:assembleDebug
 
-      - name: Install Android emulator runtime dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libpulse0 \
-            libnss3 \
-            libx11-6 \
-            libx11-xcb1 \
-            libxcb1 \
-            libxcomposite1 \
-            libxcursor1 \
-            libxi6 \
-            libxrandr2 \
-            libxdamage1 \
-            libxtst6 \
-            libgl1 \
-            libegl1
-
-      - name: Ensure Android emulator tooling
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDKMANAGER_BIN=""
-          for candidate in \
-            "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
-            "$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager" \
-            "$ANDROID_SDK_ROOT/tools/bin/sdkmanager"; do
-            if [[ -x "$candidate" ]]; then
-              SDKMANAGER_BIN="$candidate"
-              break
-            fi
-          done
-          if [[ -z "$SDKMANAGER_BIN" ]]; then
-            echo "sdkmanager not found under $ANDROID_SDK_ROOT" >&2
-            exit 1
-          fi
-          echo "using sdkmanager: $SDKMANAGER_BIN"
-          set +o pipefail
-          if ! yes | "$SDKMANAGER_BIN" --install "platform-tools" "emulator" >/dev/null; then
-            echo "Failed to install Android emulator tooling" >&2
-            exit 1
-          fi
-          set -o pipefail
-          if [[ ! -x "$ANDROID_SDK_ROOT/emulator/emulator" ]]; then
-            echo "Android emulator binary is still missing: $ANDROID_SDK_ROOT/emulator/emulator" >&2
-            exit 1
-          fi
-          "$ANDROID_SDK_ROOT/emulator/emulator" -version
-          "$ANDROID_SDK_ROOT/platform-tools/adb" --version
-
-      - name: Prepare Android AVD directories
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$ANDROID_USER_HOME" "$ANDROID_EMULATOR_HOME" "$ANDROID_AVD_HOME"
-          ls -la "$ANDROID_USER_HOME"
-
-      - name: Provision Device Pool
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "== provisioning device pool =="
-          echo "profile: $VERIFY_PROFILE"
-          mkdir -p build/ci-logs
-          provision_log="build/ci-logs/android-provision.log"
-          : > "$provision_log"
-          provision_ok=0
-          for attempt in 1 2; do
-            echo "Android provision attempt ${attempt}/2" | tee -a "$provision_log"
-            if PROVISION_TARGETS=android make provision-devices 2>&1 | tee -a "$provision_log"; then
-              provision_ok=1
-              break
-            fi
-            if [[ "$attempt" -lt 2 ]]; then
-              echo "Android provision attempt ${attempt} failed; retrying in 20s" | tee -a "$provision_log"
-              sleep 20
-            fi
-          done
-          if [[ "$provision_ok" -ne 1 ]]; then
-            echo "Android device pool provisioning failed after retries" | tee -a "$provision_log"
-            exit 1
-          fi
-          echo "device pool provisioning completed"
-
-      - name: Verify Android
-        shell: bash
-        env:
-          VERIFY_RC_SCOPE: android
-        run: |
-          set -euo pipefail
-          echo "== verify android scope =="
-          echo "profile: $VERIFY_PROFILE"
-          make verify-rc
-
-      - name: Upload RC artifacts (android)
+      - name: Upload Android debug APK
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rc-verify-android-artifacts
-          path: build/rc-verify/
+          name: android-debug-apk
+          path: androidApp/build/outputs/apk/debug/androidApp-debug.apk
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Upload Android build reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-reports
+          path: |
+            androidApp/build/reports/
+            build/reports/
           retention-days: 7
           if-no-files-found: ignore
 
-      - name: Upload CI logs (android)
+  verify-android-device:
+    needs:
+      - schedule-gate
+      - verify-android-build
+    if: needs['schedule-gate'].outputs.enabled == 'true'
+    runs-on: ${{ vars.ANDROID_EMULATOR_RUNNER != '' && vars.ANDROID_EMULATOR_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs['schedule-gate'].outputs.android_matrix) }}
+    env:
+      VERIFY_PROFILE: ${{ needs['schedule-gate'].outputs.verify_profile }}
+      ANDROID_APK_PATH: ${{ github.workspace }}/build/android-artifacts/androidApp-debug.apk
+      ANDROID_PACKAGE: app.debridhub
+      ANDROID_VERIFY_LOG_DIR: ${{ github.workspace }}/build/rc-verify/android/${{ matrix.slug }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Workflow context
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "== verify-android-device workflow context =="
+          echo "runner: $RUNNER_NAME"
+          echo "runner os: $RUNNER_OS"
+          echo "runner arch: $RUNNER_ARCH"
+          echo "workspace: $GITHUB_WORKSPACE"
+          echo "profile: $VERIFY_PROFILE"
+          echo "device label: ${{ matrix.label }}"
+          echo "api level: ${{ matrix.api_level }}"
+          echo "target: ${{ matrix.target }}"
+          echo "arch: ${{ matrix.arch }}"
+          echo "avd name: ${{ matrix.avd_name }}"
+
+      - name: Enable KVM group perms
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -e /dev/kvm ]]; then
+            echo "/dev/kvm is not available on this runner; Android Emulator will fall back to software virtualization."
+            exit 0
+          fi
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Download Android debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-debug-apk
+          path: build/android-artifacts
+
+      - name: Cache Android AVD snapshot
+        id: avd-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ runner.os }}-${{ matrix.api_level }}-${{ matrix.target }}-${{ matrix.arch }}-${{ matrix.avd_name }}-v1
+
+      - name: Create Android AVD snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api_level }}
+          target: ${{ matrix.target }}
+          arch: ${{ matrix.arch }}
+          profile: ${{ matrix.device_profile }}
+          avd-name: ${{ matrix.avd_name }}
+          force-avd-creation: false
+          disable-linux-hw-accel: auto
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated cached AVD snapshot for ${{ matrix.label }}"
+
+      - name: Verify Android emulator smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api_level }}
+          target: ${{ matrix.target }}
+          arch: ${{ matrix.arch }}
+          profile: ${{ matrix.device_profile }}
+          avd-name: ${{ matrix.avd_name }}
+          force-avd-creation: false
+          disable-linux-hw-accel: auto
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: ./scripts/verify-android-emulator.sh "$ANDROID_APK_PATH" "$ANDROID_PACKAGE"
+
+      - name: Upload RC artifacts (android-${{ matrix.slug }})
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-logs-android
-          path: build/ci-logs/
+          name: rc-verify-android-${{ matrix.slug }}
+          path: build/rc-verify/android/${{ matrix.slug }}/
           retention-days: 7
           if-no-files-found: ignore
 
   verify-ios:
-    needs:
-      - schedule-gate
-      - verify-shared
-      - verify-android
+    needs: schedule-gate
     if: needs['schedule-gate'].outputs.enabled == 'true'
     runs-on: macos-15
-    timeout-minutes: 180
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs['schedule-gate'].outputs.ios_matrix) }}
     env:
       VERIFY_PROFILE: ${{ needs['schedule-gate'].outputs.verify_profile }}
       STEP_COMMAND_TIMEOUT_SECONDS: "1800"
+      VERIFY_RC_IOS_LABELS: ${{ matrix.label }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -358,6 +353,8 @@ jobs:
           echo "runner arch: $RUNNER_ARCH"
           echo "workspace: $GITHUB_WORKSPACE"
           echo "profile: $VERIFY_PROFILE"
+          echo "ios label: ${{ matrix.label }}"
+          echo "device class: ${{ matrix.device_class }}"
           echo "repository: $GITHUB_REPOSITORY"
           echo "run id: $GITHUB_RUN_ID"
           echo "run attempt: $GITHUB_RUN_ATTEMPT"
@@ -370,18 +367,6 @@ jobs:
           java-version: "21"
           cache: gradle
 
-      - name: Provision Device Pool
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "== provisioning device pool =="
-          echo "profile: $VERIFY_PROFILE"
-          mkdir -p build/ci-logs
-          provision_log="build/ci-logs/ios-provision.log"
-          : > "$provision_log"
-          PROVISION_TARGETS=ios make provision-devices 2>&1 | tee -a "$provision_log"
-          echo "device pool provisioning completed"
-
       - name: Verify iOS
         shell: bash
         env:
@@ -390,22 +375,23 @@ jobs:
           set -euo pipefail
           echo "== verify ios scope =="
           echo "profile: $VERIFY_PROFILE"
+          echo "label filter: $VERIFY_RC_IOS_LABELS"
           make verify-rc
 
-      - name: Upload RC artifacts (ios)
+      - name: Upload RC artifacts (ios-${{ matrix.slug }})
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rc-verify-ios-artifacts
+          name: rc-verify-ios-${{ matrix.slug }}
           path: build/rc-verify/
           retention-days: 7
           if-no-files-found: ignore
 
-      - name: Upload CI logs (ios)
+      - name: Upload CI logs (ios-${{ matrix.slug }})
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-logs-ios
+          name: ci-logs-ios-${{ matrix.slug }}
           path: build/ci-logs/
           retention-days: 7
           if-no-files-found: ignore
@@ -414,7 +400,8 @@ jobs:
     needs:
       - schedule-gate
       - verify-shared
-      - verify-android
+      - verify-android-build
+      - verify-android-device
       - verify-ios
     if: always() && needs['schedule-gate'].outputs.enabled == 'true'
     runs-on: ubuntu-24.04
@@ -428,14 +415,19 @@ jobs:
         run: |
           set -euo pipefail
           echo "verify-shared result: ${{ needs['verify-shared'].result }}"
-          echo "verify-android result: ${{ needs['verify-android'].result }}"
+          echo "verify-android-build result: ${{ needs['verify-android-build'].result }}"
+          echo "verify-android-device result: ${{ needs['verify-android-device'].result }}"
           echo "verify-ios result: ${{ needs['verify-ios'].result }}"
           if [[ "${{ needs['verify-shared'].result }}" != "success" ]]; then
             echo "verify-shared did not succeed" >&2
             exit 1
           fi
-          if [[ "${{ needs['verify-android'].result }}" != "success" ]]; then
-            echo "verify-android did not succeed" >&2
+          if [[ "${{ needs['verify-android-build'].result }}" != "success" ]]; then
+            echo "verify-android-build did not succeed" >&2
+            exit 1
+          fi
+          if [[ "${{ needs['verify-android-device'].result }}" != "success" ]]; then
+            echo "verify-android-device did not succeed" >&2
             exit 1
           fi
           if [[ "${{ needs['verify-ios'].result }}" != "success" ]]; then
