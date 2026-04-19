@@ -1521,6 +1521,39 @@ run_android_smoke_step() {
   complete_step "$key" "$label" "$status" "0" "$log_path" "$reason"
 }
 
+run_android_install_step() {
+  local key="$1"
+  local label="$2"
+  local device_id="$3"
+  local apk_path="$4"
+  local log_path
+  local status="PASS"
+  local reason=""
+
+  mkdir -p "$(current_log_dir)"
+  log_path="$(current_log_dir)/$key.log"
+
+  if [[ -z "$device_id" ]]; then
+    printf 'Android device id is empty.\n' > "$log_path"
+    status="FAIL"
+    reason="android_device_missing"
+  elif [[ ! -f "$apk_path" ]]; then
+    printf 'Android APK not found: %s\n' "$apk_path" > "$log_path"
+    status="FAIL"
+    reason="android_apk_missing"
+  else
+    {
+      adb -s "$device_id" wait-for-device
+      adb -s "$device_id" install -r "$apk_path"
+    } > "$log_path" 2>&1 || {
+      status="FAIL"
+      reason="android_install_failed"
+    }
+  fi
+
+  complete_step "$key" "$label" "$status" "0" "$log_path" "$reason"
+}
+
 run_ios_smoke_step() {
   local key="$1"
   local label="$2"
@@ -1606,7 +1639,7 @@ run_android_device_matrix() {
     fi
 
     if [[ "$dependency_status" == "PASS" && "$(get_step_status "${key_prefix}_env_ready")" == "PASS" ]]; then
-      run_command_step "${key_prefix}_install" "Android [$label] install debug" "ANDROID_SERIAL=\"$ANDROID_DEVICE_ID\" ./gradlew :androidApp:installDebug"
+      run_android_install_step "${key_prefix}_install" "Android [$label] install debug" "$ANDROID_DEVICE_ID" "$ROOT_DIR/androidApp/build/outputs/apk/debug/androidApp-debug.apk"
     else
       run_skip_step "${key_prefix}_install" "Android [$label] install debug" "dependency_failed"
     fi
