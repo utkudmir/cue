@@ -1098,12 +1098,30 @@ select_ios_candidate() {
 }
 
 ensure_adb_on_path() {
+  local sdk_root=""
+
   if command -v adb >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [[ -n "${ANDROID_SDK_ROOT:-}" && -x "${ANDROID_SDK_ROOT}/platform-tools/adb" ]]; then
+    export PATH="${ANDROID_SDK_ROOT}/platform-tools:$PATH"
+    return 0
+  fi
+
+  if [[ -n "${ANDROID_HOME:-}" && -x "${ANDROID_HOME}/platform-tools/adb" ]]; then
+    export PATH="${ANDROID_HOME}/platform-tools:$PATH"
     return 0
   fi
 
   if [[ -x "$HOME/Library/Android/sdk/platform-tools/adb" ]]; then
     export PATH="$HOME/Library/Android/sdk/platform-tools:$PATH"
+    return 0
+  fi
+
+  sdk_root="$(find_android_sdk_root || true)"
+  if [[ -n "$sdk_root" && -x "$sdk_root/platform-tools/adb" ]]; then
+    export PATH="$sdk_root/platform-tools:$PATH"
     return 0
   fi
 
