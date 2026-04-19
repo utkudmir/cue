@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help shared-test android-debug android-connected-test coverage ios-project ios-open ios-build ios-test ios-run verify-rc provision-devices
+.PHONY: help shared-test android-debug android-connected-test coverage ios-project ios-open ios-build ios-test ios-run verify-rc provision-devices clean-local
 
 help:
 	@echo "make shared-test  - Run shared Kotlin tests"
@@ -14,6 +14,7 @@ help:
 	@echo "make ios-run      - Build, install, and launch the iOS simulator app"
 	@echo "make verify-rc    - Run release-candidate verification gate"
 	@echo "make provision-devices - Provision simulators/AVDs from device pool"
+	@echo "make clean-local  - Remove local build artifacts and caches"
 
 shared-test:
 	@if [[ -z "$$JAVA_HOME" || ! -x "$$JAVA_HOME/bin/java" ]]; then export JAVA_HOME="$$(/usr/libexec/java_home -v 21 2>/dev/null)"; fi; ./gradlew :shared:allTests
@@ -47,3 +48,6 @@ verify-rc:
 
 provision-devices:
 	./scripts/provision-device-pool.sh
+
+clean-local:
+	rm -rf build androidApp/build shared/build .gradle .kotlin

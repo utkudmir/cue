@@ -49,6 +49,11 @@
 - iOS tarafinda `openAppSettings` delegasyonu da native test ile guvenceye alindi.
 - Son test sayilari: Android ViewModel 28, iOS ViewModel 29 (iOS'ta 1 ek native delegasyon testi).
 
+### 8) Repo temizlik ve slimming
+- `composeApp/` legacy modulu repodan kaldirildi.
+- Local artifact temizligi icin `make clean-local` komutu eklendi.
+- Dokumanlar aktif module gercegine gore guncellendi.
+
 ## Dogrulama Sonuclari (Son Session)
 - `make shared-test` -> PASS
 - `./gradlew :androidApp:lint :androidApp:testDebugUnitTest` -> PASS
@@ -82,7 +87,7 @@ Kalan ana is paketi coverage esigini kontrollu artirmak.
   - `BRANCH >= 60`
 
 ## Teknik Notlar / Guardrail
-- Aktif Gradle modulleri: `:shared` ve `:androidApp` (`composeApp/` legacy).
+- Aktif Gradle modulleri: `:shared` ve `:androidApp`.
 - iOS proje source of truth: `iosApp/project.yml` (xcodeproj regenerate edilir).
 - iOS runtime: `DebridHubApp.swift` -> `IOSAppViewModel.swift` -> `IosAppGraph` -> shared `DebridHubController`.
 - Shared orchestration: `shared/src/commonMain/kotlin/app/debridhub/shared/DebridHubController.kt`.

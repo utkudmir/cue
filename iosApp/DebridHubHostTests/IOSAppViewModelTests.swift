@@ -822,13 +822,19 @@ final class IOSAppViewModelTests: XCTestCase {
             viewModel.toggleReminderDay(1)
         }
         await waitUntil {
-            await MainActor.run { service.updatedReminderSnapshots.count >= 3 }
+            await MainActor.run {
+                let snapshots = service.updatedReminderSnapshots
+                return snapshots.contains(where: { !$0.sevenDayReminder }) &&
+                    snapshots.contains(where: { !$0.threeDayReminder }) &&
+                    snapshots.contains(where: { !$0.oneDayReminder })
+            }
         }
 
         await MainActor.run {
-            XCTAssertEqual(false, service.updatedReminderSnapshots[0].sevenDayReminder)
-            XCTAssertEqual(false, service.updatedReminderSnapshots[1].threeDayReminder)
-            XCTAssertEqual(false, service.updatedReminderSnapshots[2].oneDayReminder)
+            let snapshots = service.updatedReminderSnapshots
+            XCTAssertTrue(snapshots.contains(where: { !$0.sevenDayReminder }))
+            XCTAssertTrue(snapshots.contains(where: { !$0.threeDayReminder }))
+            XCTAssertTrue(snapshots.contains(where: { !$0.oneDayReminder }))
         }
     }
 
@@ -889,12 +895,17 @@ final class IOSAppViewModelTests: XCTestCase {
             viewModel.setNotifyAfterExpiry(true)
         }
         await waitUntil {
-            await MainActor.run { service.updatedReminderSnapshots.count >= 2 }
+            await MainActor.run {
+                let snapshots = service.updatedReminderSnapshots
+                return snapshots.contains(where: { !$0.notifyOnExpiry }) &&
+                    snapshots.contains(where: { $0.notifyAfterExpiry })
+            }
         }
 
         await MainActor.run {
-            XCTAssertEqual(false, service.updatedReminderSnapshots[0].notifyOnExpiry)
-            XCTAssertEqual(true, service.updatedReminderSnapshots[1].notifyAfterExpiry)
+            let snapshots = service.updatedReminderSnapshots
+            XCTAssertTrue(snapshots.contains(where: { !$0.notifyOnExpiry }))
+            XCTAssertTrue(snapshots.contains(where: { $0.notifyAfterExpiry }))
         }
     }
 

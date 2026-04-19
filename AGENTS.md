@@ -1,7 +1,7 @@
 # DebridHub Agent Notes
 
 ## Repo Truths That Matter
-- Active Gradle modules are only `:shared` and `:androidApp` (`settings.gradle.kts`); `composeApp/` is legacy and not part of the active build.
+- Active Gradle modules are only `:shared` and `:androidApp` (`settings.gradle.kts`).
 - iOS project files are generated from `iosApp/project.yml` via `xcodegen` (`scripts/generate-ios-project.sh`). Treat `project.yml` as source of truth; regenerate after iOS project config edits.
 - If docs and code disagree, trust executable sources (`Makefile`, Gradle files, scripts, code).
 

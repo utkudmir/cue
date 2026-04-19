@@ -20,7 +20,6 @@ debrid-hub/
 ├── shared/       # Shared KMP domain, data, auth, reminders, diagnostics
 ├── androidApp/   # Active Android app (Jetpack Compose)
 ├── iosApp/       # Active iOS host app (SwiftUI + Xcode project)
-├── composeApp/   # Legacy shared-UI experiment, not in the active build
 └── docs/         # Project documentation
 ```
 
@@ -86,12 +85,6 @@ Current iOS storage note:
 - reminder preferences use `NSUserDefaults`
 - auth state uses iOS Keychain via `SecureTokenStore.ios.kt`
 - legacy `NSUserDefaults` auth state is migrated to Keychain on first read
-
-### `composeApp`
-
-`composeApp` is leftover from an earlier shared-UI experiment. It is not part
-of the active Gradle build in `settings.gradle.kts` and is not the current
-runtime path for either platform.
 
 ## Authentication Flow
 

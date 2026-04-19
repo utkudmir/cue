@@ -43,7 +43,6 @@ talks directly to Real-Debrid's official API hosts.
 | `shared/` | Shared domain, data, auth, reminder, diagnostics, and platform abstraction code. |
 | `androidApp/` | Active Android app built with Jetpack Compose. |
 | `iosApp/` | Active native SwiftUI iOS host app and Xcode project definition. |
-| `composeApp/` | Legacy shared-UI experiment kept in the repo, but not part of the active build. |
 | `docs/` | Architecture, auth, privacy, threat model, iOS setup, diagnostics example, and compliance notes. |
 
 See [docs/architecture.md](docs/architecture.md) for the implementation
@@ -74,6 +73,12 @@ Build and run the iOS simulator app:
 
 ```bash
 make ios-run
+```
+
+Run iOS native tests:
+
+```bash
+make ios-test
 ```
 
 For phone-class preference during dynamic simulator resolution:
@@ -120,6 +125,12 @@ Provision only one platform when needed:
 ```bash
 VERIFY_PROFILE=ci-pr PROVISION_TARGETS=android make provision-devices
 VERIFY_PROFILE=ci-pr PROVISION_TARGETS=ios make provision-devices
+```
+
+Clean local build artifacts and caches when you want to reclaim disk space:
+
+```bash
+make clean-local
 ```
 
 Requirements:
