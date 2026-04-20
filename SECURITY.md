@@ -45,3 +45,17 @@ Reports outside the current product boundary may be accepted as best effort.
 
 Please allow time for triage and a fix before public disclosure.
 After remediation, coordinated disclosure is welcome.
+
+## Secret Hygiene for Open Source
+
+To prevent accidental leaks before publishing changes:
+
+- keep Apple/Google credentials, signing keys, and `.env` values out of git
+- run `make security-scan-secrets` before pushing
+- rely on GitHub secret scanning alerts to catch high-confidence patterns
+
+Never commit these files (examples):
+
+- `google-services.json`, `GoogleService-Info.plist`
+- `key.properties`, `*.jks`, `*.keystore`, `*.p8`, `*.pem`, `*.mobileprovision`
+- `service-account.json`, `credentials.json`

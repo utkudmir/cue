@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help localization-generate localization-check shared-static-analysis shared-test android-debug android-connected-test coverage ios-project ios-open ios-lint ios-build ios-test ios-run verify-rc provision-devices clean-local
+.PHONY: help localization-generate localization-check shared-static-analysis shared-test android-debug android-connected-test coverage ios-project ios-open ios-lint ios-build ios-test ios-run verify-rc provision-devices security-scan-secrets clean-local
 
 help:
 	@echo "make localization-generate - Generate Android, iOS, and shared localization outputs"
@@ -18,6 +18,7 @@ help:
 	@echo "make ios-run      - Build, install, and launch the iOS simulator app"
 	@echo "make verify-rc    - Run release-candidate verification gate"
 	@echo "make provision-devices - Provision simulators/AVDs from device pool"
+	@echo "make security-scan-secrets - Scan tracked files for leaked secrets"
 	@echo "make clean-local  - Remove local build artifacts and caches"
 
 localization-generate:
@@ -64,6 +65,9 @@ verify-rc:
 
 provision-devices:
 	./scripts/provision-device-pool.sh
+
+security-scan-secrets:
+	./scripts/scan-secrets.sh
 
 clean-local:
 	rm -rf build androidApp/build shared/build .gradle .kotlin

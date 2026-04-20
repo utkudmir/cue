@@ -20,3 +20,16 @@ iosApp/DebridHubHost.xcodeproj/xcuserdata/
 .env
 .env.*
 local.properties
+
+# Credentials / signing material
+*.jks
+*.keystore
+*.p8
+*.pem
+*.mobileprovision
+*.p12
+key.properties
+google-services.json
+GoogleService-Info.plist
+service-account.json
+credentials.json
