@@ -38,11 +38,13 @@ else
 fi
 
 open -a Simulator >/dev/null 2>&1 || true
-xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true
-xcrun simctl boot "$SIMULATOR_UDID" >/dev/null 2>&1 || true
-xcrun simctl bootstatus "$SIMULATOR_UDID" -b
-xcrun simctl terminate "$SIMULATOR_UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
-xcrun simctl uninstall "$SIMULATOR_UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+if [[ -n "$SIMULATOR_UDID" ]]; then
+  xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true
+  xcrun simctl boot "$SIMULATOR_UDID" >/dev/null 2>&1 || true
+  xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+  xcrun simctl terminate "$SIMULATOR_UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+  xcrun simctl uninstall "$SIMULATOR_UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+fi
 
 xcodebuild \
   -project "$ROOT_DIR/iosApp/DebridHubHost.xcodeproj" \
