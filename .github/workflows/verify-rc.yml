@@ -80,6 +80,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       enabled: ${{ steps.plan.outputs.enabled }}
+      verify_scope: ${{ steps.plan.outputs.verify_scope }}
       verify_profile: ${{ steps.plan.outputs.verify_profile }}
       android_matrix: ${{ steps.plan.outputs.android_matrix }}
       ios_matrix: ${{ steps.plan.outputs.ios_matrix }}
@@ -92,7 +93,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const exactMatches = new Set([
+            const triggerExactMatches = new Set([
               '.github/workflows/verify-rc.yml',
               '.detekt.yml',
               '.swiftlint.yml',
@@ -105,7 +106,7 @@ jobs:
               'docs/localization.md'
             ])
 
-            const prefixMatches = [
+            const triggerPrefixMatches = [
               'localization/',
               'gradle/',
               'ci/',
@@ -115,8 +116,46 @@ jobs:
               'iosApp/'
             ]
 
+            const fullExactMatches = new Set([
+              '.detekt.yml',
+              '.swiftlint.yml',
+              'Makefile',
+              'build.gradle.kts',
+              'settings.gradle.kts',
+              'gradle.properties'
+            ])
+
+            const fullPrefixMatches = [
+              'localization/',
+              'gradle/',
+              'ci/',
+              'shared/',
+              'androidApp/',
+              'iosApp/'
+            ]
+
+            const ciOnlyExactMatches = new Set([
+              '.github/workflows/verify-rc.yml',
+              'docs/release-gate.md',
+              'docs/appstore-review-checklist.md',
+              'docs/localization.md',
+              'scripts/verify-rc.sh',
+              'scripts/verify-android-emulator.sh',
+              'scripts/test-ios-sim.sh',
+              'scripts/build-ios-sim.sh',
+              'scripts/generate-ios-project.sh',
+              'scripts/device-pool-matrix.rb'
+            ])
+
+            const ciOnlyPrefixMatches = [
+              '.github/workflows/'
+            ]
+
+            const matches = (file, exactSet, prefixes) => exactSet.has(file) || prefixes.some((prefix) => file.startsWith(prefix))
+
             if (context.eventName === 'schedule' || context.eventName === 'workflow_dispatch') {
               core.setOutput('relevant', 'true')
+              core.setOutput('verify_scope', 'full')
               core.info(`Skipping change detection for ${context.eventName}.`)
               return
             }
@@ -139,10 +178,23 @@ jobs:
               changedFiles = (comparison.data.files || []).map((file) => file.filename)
             }
 
-            const relevant = changedFiles.some((file) => exactMatches.has(file) || prefixMatches.some((prefix) => file.startsWith(prefix)))
+            const relevantFiles = changedFiles.filter((file) => matches(file, triggerExactMatches, triggerPrefixMatches))
+            const hasFull = relevantFiles.some((file) => matches(file, fullExactMatches, fullPrefixMatches))
+            const hasCiOnly = relevantFiles.some((file) => matches(file, ciOnlyExactMatches, ciOnlyPrefixMatches))
+            const hasUnknownRelevant = relevantFiles.some((file) => !matches(file, fullExactMatches, fullPrefixMatches) && !matches(file, ciOnlyExactMatches, ciOnlyPrefixMatches))
+
+            const relevant = relevantFiles.length > 0
+            let verifyScope = 'skip'
+            if (relevant) {
+              verifyScope = hasFull || hasUnknownRelevant ? 'full' : 'ci'
+            }
+
             core.setOutput('relevant', relevant ? 'true' : 'false')
+            core.setOutput('verify_scope', verifyScope)
             core.info(`Changed files (${changedFiles.length}): ${changedFiles.join(', ') || 'none'}`)
+            core.info(`Verification-path files (${relevantFiles.length}): ${relevantFiles.join(', ') || 'none'}`)
             core.info(`Verification-relevant changes detected: ${relevant}`)
+            core.info(`Selected verification scope: ${verifyScope}`)
 
       - name: Resolve profile and device matrix
         id: plan
@@ -162,6 +214,12 @@ jobs:
             effective_profile="${{ github.event.inputs.verify_profile }}"
           fi
 
+          effective_scope="${{ steps.relevant-changes.outputs.verify_scope }}"
+          if [[ -z "$effective_scope" ]]; then
+            effective_scope="full"
+          fi
+
+          echo "verify_scope=$effective_scope" >> "$GITHUB_OUTPUT"
           echo "verify_profile=$effective_profile" >> "$GITHUB_OUTPUT"
 
           if [[ "${{ github.event_name }}" == "schedule" && "${{ vars.ENABLE_RC_FULL_SCHEDULE }}" != "true" ]]; then
@@ -231,7 +289,7 @@ jobs:
   android-static-analysis:
     name: Android static analysis
     needs: plan-verification
-    if: needs['plan-verification'].outputs.enabled == 'true'
+    if: needs['plan-verification'].outputs.enabled == 'true' && needs['plan-verification'].outputs.verify_scope == 'full'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -275,7 +333,7 @@ jobs:
     needs:
       - plan-verification
       - android-static-analysis
-    if: needs['plan-verification'].outputs.enabled == 'true'
+    if: needs['plan-verification'].outputs.enabled == 'true' && needs['plan-verification'].outputs.verify_scope == 'full'
     runs-on: ${{ vars.ANDROID_EMULATOR_RUNNER != '' && vars.ANDROID_EMULATOR_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 90
     strategy:
@@ -378,7 +436,7 @@ jobs:
     needs:
       - plan-verification
       - android-automated-tests
-    if: needs['plan-verification'].outputs.enabled == 'true'
+    if: needs['plan-verification'].outputs.enabled == 'true' && needs['plan-verification'].outputs.verify_scope == 'full'
     runs-on: ${{ vars.ANDROID_EMULATOR_RUNNER != '' && vars.ANDROID_EMULATOR_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 60
     strategy:
@@ -460,7 +518,7 @@ jobs:
   ios-static-analysis:
     name: iOS static analysis
     needs: plan-verification
-    if: needs['plan-verification'].outputs.enabled == 'true'
+    if: needs['plan-verification'].outputs.enabled == 'true' && needs['plan-verification'].outputs.verify_scope == 'full'
     runs-on: macos-15
     timeout-minutes: 60
     steps:
@@ -493,7 +551,7 @@ jobs:
     needs:
       - plan-verification
       - ios-static-analysis
-    if: needs['plan-verification'].outputs.enabled == 'true'
+    if: needs['plan-verification'].outputs.enabled == 'true' && needs['plan-verification'].outputs.verify_scope == 'full'
     runs-on: macos-15
     timeout-minutes: 120
     strategy:
@@ -549,7 +607,7 @@ jobs:
     needs:
       - plan-verification
       - ios-automated-tests
-    if: needs['plan-verification'].outputs.enabled == 'true'
+    if: needs['plan-verification'].outputs.enabled == 'true' && needs['plan-verification'].outputs.verify_scope == 'full'
     runs-on: macos-15
     timeout-minutes: 60
     strategy:
@@ -619,6 +677,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          verification_scope="${{ needs['plan-verification'].outputs.verify_scope }}"
+          echo "verification scope: $verification_scope"
           echo "shared-quality result: ${{ needs['shared-quality'].result }}"
           echo "android-static-analysis result: ${{ needs['android-static-analysis'].result }}"
           echo "android-automated-tests result: ${{ needs['android-automated-tests'].result }}"
@@ -626,19 +686,43 @@ jobs:
           echo "ios-static-analysis result: ${{ needs['ios-static-analysis'].result }}"
           echo "ios-automated-tests result: ${{ needs['ios-automated-tests'].result }}"
           echo "ios-launch-smoke result: ${{ needs['ios-launch-smoke'].result }}"
-          for result in \
-            "${{ needs['shared-quality'].result }}" \
-            "${{ needs['android-static-analysis'].result }}" \
-            "${{ needs['android-automated-tests'].result }}" \
-            "${{ needs['android-launch-smoke'].result }}" \
-            "${{ needs['ios-static-analysis'].result }}" \
-            "${{ needs['ios-automated-tests'].result }}" \
-            "${{ needs['ios-launch-smoke'].result }}"; do
-            if [[ "$result" != "success" ]]; then
-              echo "At least one verification lane did not succeed" >&2
+
+          if [[ "$verification_scope" == "full" ]]; then
+            for result in \
+              "${{ needs['shared-quality'].result }}" \
+              "${{ needs['android-static-analysis'].result }}" \
+              "${{ needs['android-automated-tests'].result }}" \
+              "${{ needs['android-launch-smoke'].result }}" \
+              "${{ needs['ios-static-analysis'].result }}" \
+              "${{ needs['ios-automated-tests'].result }}" \
+              "${{ needs['ios-launch-smoke'].result }}"; do
+              if [[ "$result" != "success" ]]; then
+                echo "At least one full verification lane did not succeed" >&2
+                exit 1
+              fi
+            done
+          elif [[ "$verification_scope" == "ci" ]]; then
+            if [[ "${{ needs['shared-quality'].result }}" != "success" ]]; then
+              echo "Shared quality lane did not succeed for CI verification scope" >&2
               exit 1
             fi
-          done
+
+            for result in \
+              "${{ needs['android-static-analysis'].result }}" \
+              "${{ needs['android-automated-tests'].result }}" \
+              "${{ needs['android-launch-smoke'].result }}" \
+              "${{ needs['ios-static-analysis'].result }}" \
+              "${{ needs['ios-automated-tests'].result }}" \
+              "${{ needs['ios-launch-smoke'].result }}"; do
+              if [[ "$result" != "skipped" && "$result" != "success" ]]; then
+                echo "Non-full lane entered unexpected state for CI scope: $result" >&2
+                exit 1
+              fi
+            done
+          else
+            echo "Unsupported verification scope: $verification_scope" >&2
+            exit 1
+          fi
 
       - name: Checkout
         uses: actions/checkout@v4
