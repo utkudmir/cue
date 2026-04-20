@@ -169,6 +169,7 @@ CI quick notes:
 - New Dependabot PRs trigger `dependabot-auto-review`, which requests Copilot review and posts `@copilot review` for the current head SHA.
 - Dependabot PRs are merged automatically only after a Copilot approval and a successful `Final verification gate`.
 - `cache-hygiene` runs twice daily to trim stale GitHub Actions caches.
+- Code scanning uses a repository-managed `CodeQL` workflow with JDK 21 and manual Gradle build to avoid default autobuild configuration errors.
 
 ## Security and Privacy
 
