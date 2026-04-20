@@ -213,6 +213,10 @@ Contributing quick links:
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - [SECURITY.md](SECURITY.md)
+- [SUPPORT.md](SUPPORT.md)
+- [GOVERNANCE.md](GOVERNANCE.md)
+- [MAINTAINERS.md](MAINTAINERS.md)
+- [CHANGELOG.md](CHANGELOG.md)
 - [docs/compliance.md](docs/compliance.md)
 - [docs/release-gate.md](docs/release-gate.md)
 
