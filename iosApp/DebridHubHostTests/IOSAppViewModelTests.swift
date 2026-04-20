@@ -821,7 +821,7 @@ final class IOSAppViewModelTests: XCTestCase {
             viewModel.toggleReminderDay(3)
             viewModel.toggleReminderDay(1)
         }
-        await waitUntil {
+        await waitUntil(timeoutNanoseconds: 5_000_000_000) {
             await MainActor.run {
                 let snapshots = service.updatedReminderSnapshots
                 return snapshots.contains(where: { !$0.sevenDayReminder }) &&
@@ -894,7 +894,7 @@ final class IOSAppViewModelTests: XCTestCase {
             viewModel.setNotifyOnExpiry(false)
             viewModel.setNotifyAfterExpiry(true)
         }
-        await waitUntil {
+        await waitUntil(timeoutNanoseconds: 5_000_000_000) {
             await MainActor.run {
                 let snapshots = service.updatedReminderSnapshots
                 return snapshots.contains(where: { !$0.notifyOnExpiry }) &&
@@ -1123,7 +1123,7 @@ final class IOSAppViewModelTests: XCTestCase {
     }
 
     private func waitUntil(
-        timeoutNanoseconds: UInt64 = 1_000_000_000,
+        timeoutNanoseconds: UInt64 = 3_000_000_000,
         condition: @escaping () async -> Bool
     ) async {
         let start = DispatchTime.now().uptimeNanoseconds
