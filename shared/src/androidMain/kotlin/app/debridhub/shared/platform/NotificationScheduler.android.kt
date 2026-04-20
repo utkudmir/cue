@@ -28,9 +28,8 @@ class NotificationSchedulerImpl(
         val ids = mutableSetOf<String>()
         reminders.forEach { reminder ->
             val notificationId = reminder.fireAt.epochSeconds.toInt()
-            val intent = Intent(ACTION_REMINDER_ALARM).apply {
-                setClass(context, ReminderAlarmReceiver::class.java)
-                setPackage(context.packageName)
+            val intent = Intent(context, ReminderAlarmReceiver::class.java).apply {
+                action = ACTION_REMINDER_ALARM
                 putExtra(ReminderAlarmReceiver.EXTRA_NOTIFICATION_ID, notificationId)
                 putExtra(ReminderAlarmReceiver.EXTRA_MESSAGE, reminder.message)
             }
@@ -59,9 +58,9 @@ class NotificationSchedulerImpl(
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
                 notificationId,
-                Intent(ACTION_REMINDER_ALARM)
-                    .setClass(context, ReminderAlarmReceiver::class.java)
-                    .setPackage(context.packageName),
+                Intent(context, ReminderAlarmReceiver::class.java).apply {
+                    action = ACTION_REMINDER_ALARM
+                },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             alarmManager.cancel(pendingIntent)

@@ -18,6 +18,8 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         ensureNotificationChannel(context)
 
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            ?.setPackage(context.packageName)
+            ?.setClassName(context.packageName, "app.debridhub.android.MainActivity")
         val contentIntent = PendingIntent.getActivity(
             context,
             notificationId,
