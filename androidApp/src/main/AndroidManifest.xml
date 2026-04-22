@@ -6,8 +6,10 @@
     <application
         android:allowBackup="false"
         android:fullBackupContent="false"
-        android:label="DebridHub"
-        android:theme="@style/Theme.DebridHub"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Cue"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.Cue"
         android:usesCleartextTraffic="false">
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -20,7 +22,7 @@
         </provider>
 
         <receiver
-            android:name="app.debridhub.shared.platform.ReminderAlarmReceiver"
+            android:name="com.utkudemir.cue.shared.platform.ReminderAlarmReceiver"
             android:exported="false" />
 
         <activity

@@ -1,6 +1,6 @@
 # iOS Setup
 
-DebridHub keeps the iOS app inside the same repository under `iosApp/`. The
+Cue keeps the iOS app inside the same repository under `iosApp/`. The
 shared Kotlin Multiplatform code lives in `shared/`, and the native SwiftUI
 host app links the generated `Shared.framework` during the Xcode build.
 
@@ -59,12 +59,12 @@ IOS_DEVICE_CLASS=small-phone make ios-test
 IOS_SIMULATOR_NAME="<available-simulator-name>" make ios-test
 ```
 
-Current iOS native regression suite includes `DebridHubHostTests` with
+Current iOS native regression suite includes `CueHostTests` with
 `IOSAppViewModelTests` parity scenarios.
 
 ## How the integration works
 
-1. `iosApp/DebridHubHost.xcodeproj` is generated from `iosApp/project.yml`.
+1. `iosApp/CueHost.xcodeproj` is generated from `iosApp/project.yml`.
 2. The Xcode target runs `./gradlew :shared:embedAndSignAppleFrameworkForXcode`
    in a pre-build script.
 3. The generated `Shared.framework` is linked from

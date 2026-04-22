@@ -15,7 +15,7 @@
     <string name="account_username">Username: %1$s</string>
     <string name="common_actions">Actions</string>
     <string name="common_active">Active</string>
-    <string name="common_app_name">DebridHub</string>
+    <string name="common_app_name">Cue</string>
     <string name="common_back">Back</string>
     <string name="common_cancel_authorization">Cancel Authorization</string>
     <string name="common_connect_real_debrid">Connect Real-Debrid</string>
@@ -59,27 +59,27 @@
     <string name="onboarding_before_connect_step_1">1. Tap Connect Real-Debrid to request a device code.</string>
     <string name="onboarding_before_connect_step_2">2. Copy the code if you want, then approve the device on Real-Debrid.</string>
     <string name="onboarding_before_connect_step_3">3. If your browser handoff is interrupted, use Open Authorization Page below.</string>
-    <string name="onboarding_before_connect_step_4">4. Return here while DebridHub polls for completion.</string>
+    <string name="onboarding_before_connect_step_4">4. Return here while Cue polls for completion.</string>
     <string name="onboarding_before_connect_step_5">You can open Trust Center first if you want to inspect privacy, security, diagnostics, and compliance details.</string>
     <string name="onboarding_before_connect_title">Before you connect</string>
     <string name="onboarding_direct_verification_url">Direct verification URL: %1$s</string>
     <string name="onboarding_enter_code">Enter this code on Real-Debrid.</string>
     <string name="onboarding_finish_authorization_title">Finish authorization</string>
-    <string name="onboarding_hero_body">DebridHub talks directly to the official Real-Debrid API. Tokens stay on device and no backend is involved.</string>
+    <string name="onboarding_hero_body">Cue talks directly to the official Real-Debrid API. Tokens stay on device and no backend is involved.</string>
     <string name="onboarding_hero_title">Track your Real-Debrid subscription and renew before it lapses.</string>
     <string name="onboarding_notifications_already_enabled">Notifications are already enabled on this device.</string>
-    <string name="onboarding_notifications_disabled_help">Notifications are currently disabled for DebridHub. You can try the permission prompt again or re-enable alerts from system settings.</string>
+    <string name="onboarding_notifications_disabled_help">Notifications are currently disabled for Cue. You can try the permission prompt again or re-enable alerts from system settings.</string>
     <string name="onboarding_notifications_later">You can enable notifications now or later. Reminder alerts start once your account is connected.</string>
     <string name="onboarding_polling_until">Polling every %1$ss until %2$s</string>
     <string name="onboarding_verification_url">Verification URL: %1$s</string>
-    <string name="onboarding_waiting_for_approval">Waiting for Real-Debrid approval. After you approve the device, come back here and DebridHub will finish the login automatically.</string>
+    <string name="onboarding_waiting_for_approval">Waiting for Real-Debrid approval. After you approve the device, come back here and Cue will finish the login automatically.</string>
     <plurals name="reminders_day_count">
         <item quantity="one">%1$s day</item>
         <item quantity="other">%1$s days</item>
     </plurals>
     <string name="reminders_days_before_expiry">Days before expiry</string>
     <string name="reminders_enable">Enable reminders</string>
-    <string name="reminders_local_schedule_intro">DebridHub will schedule these local notifications on this device:</string>
+    <string name="reminders_local_schedule_intro">Cue will schedule these local notifications on this device:</string>
     <string name="reminders_no_future_planned">No future reminders are planned right now. This can happen if the expiry date is very close, already passed, or your selected reminder windows are already in the past.</string>
     <string name="reminders_notification_expired_yesterday">Your Real-Debrid subscription expired yesterday</string>
     <plurals name="reminders_notification_expires_in">
@@ -87,7 +87,7 @@
         <item quantity="other">Your Real-Debrid subscription expires in %1$s days</item>
     </plurals>
     <string name="reminders_notification_expires_today">Your Real-Debrid subscription expires today</string>
-    <string name="reminders_notifications_disabled">Reminders are planned, but notifications are currently disabled for DebridHub. Re-enable them in system settings if you want these alerts to fire.</string>
+    <string name="reminders_notifications_disabled">Reminders are planned, but notifications are currently disabled for Cue. Re-enable them in system settings if you want these alerts to fire.</string>
     <string name="reminders_notify_after_expiry">Notify after expiry</string>
     <string name="reminders_notify_on_expiry">Notify on expiry day</string>
     <string name="reminders_planned_times">Planned reminder times:</string>
@@ -99,15 +99,15 @@
     <string name="reminders_turned_off">Reminders are currently turned off.</string>
     <string name="trust_center_about_line_1">Current scope is intentionally narrow: account auth, account-status reads, local reminder scheduling, and local diagnostics export.</string>
     <string name="trust_center_about_line_2">The app does not currently implement unrestrict, downloads, torrent management, streaming, generated-link sharing, or multi-user account management.</string>
-    <string name="trust_center_about_line_3">DebridHub uses official Real-Debrid API endpoints and the documented device-auth flow. Users are still responsible for following Real-Debrids own Terms and account rules.s own Terms and account rules.</string>
+    <string name="trust_center_about_line_3">Cue uses official Real-Debrid API endpoints and the documented device-auth flow. Users are still responsible for following Real-Debrids own Terms and account rules.s own Terms and account rules.</string>
     <string name="trust_center_about_title">About &amp; Compliance</string>
     <string name="trust_center_diagnostics_line_1">Diagnostics export currently includes app version, OS version, last sync timestamp, account expiry state, and limited non-sensitive runtime flags.</string>
     <string name="trust_center_diagnostics_line_2">Diagnostics export excludes access tokens, refresh tokens, client secrets, username, email, and full account history.</string>
     <string name="trust_center_diagnostics_title">Diagnostics</string>
     <string name="trust_center_hero_body">This is in-app product copy based on the current implementation, not a marketing layer or webview.</string>
-    <string name="trust_center_hero_title">See exactly how DebridHub handles auth, storage, diagnostics, and feature boundaries.</string>
+    <string name="trust_center_hero_title">See exactly how Cue handles auth, storage, diagnostics, and feature boundaries.</string>
     <string name="trust_center_preview_unavailable">Diagnostics preview is not available yet.</string>
-    <string name="trust_center_privacy_line_1">DebridHub has no backend. The app talks directly to Real-Debrid from your device.</string>
+    <string name="trust_center_privacy_line_1">Cue has no backend. The app talks directly to Real-Debrid from your device.</string>
     <string name="trust_center_privacy_line_2">There is no analytics SDK, tracking pixel, crash-reporting service, or remote account sync in the current app.</string>
     <string name="trust_center_privacy_line_3">Reminder notifications are local to this device and are scheduled using your locally stored account status.</string>
     <string name="trust_center_privacy_line_4">Diagnostics export is manual. Nothing is sent anywhere unless you explicitly share the exported file yourself.</string>
@@ -115,6 +115,6 @@
     <string name="trust_center_security_line_1">Authentication uses Real-Debrids official OAuth2 device flow rather than password collection.s official OAuth2 device flow rather than password collection.</string>
     <string name="trust_center_security_line_2_android">Android stores auth state with EncryptedSharedPreferences.</string>
     <string name="trust_center_security_line_2_ios">iOS stores auth state in Keychain and migrates legacy NSUserDefaults auth state on first read.</string>
-    <string name="trust_center_security_line_3">Disconnect clears saved auth state and cancels reminders. DebridHub does not need a companion server to function.</string>
+    <string name="trust_center_security_line_3">Disconnect clears saved auth state and cancels reminders. Cue does not need a companion server to function.</string>
     <string name="trust_center_security_title">Security</string>
 </resources>

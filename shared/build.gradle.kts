@@ -35,7 +35,7 @@ kotlin {
     jvmToolchain(21)
 
     android {
-        namespace = "app.debridhub.shared"
+        namespace = "com.utkudemir.cue.shared"
         compileSdk = 36
         minSdk = 23
 

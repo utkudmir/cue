@@ -1,6 +1,6 @@
 # Maintainers
 
-DebridHub is currently maintained by:
+Cue is currently maintained by:
 
 - @utkudmir
 

@@ -1,11 +1,11 @@
 included:
-  - iosApp/DebridHubHost
-  - iosApp/DebridHubHostTests
+  - iosApp/CueHost
+  - iosApp/CueHostTests
 
 excluded:
-  - iosApp/DebridHubHost/Generated
-  - iosApp/DebridHubHost/Resources
-  - iosApp/DebridHubHost.xcodeproj
+  - iosApp/CueHost/Generated
+  - iosApp/CueHost/Resources
+  - iosApp/CueHost.xcodeproj
   - build
 
 reporter: github-actions-logging

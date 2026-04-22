@@ -1,6 +1,6 @@
 # Architecture Overview
 
-DebridHub is a Kotlin Multiplatform project that shares business logic across
+Cue is a Kotlin Multiplatform project that shares business logic across
 Android and iOS while keeping the presentation layer native on each platform.
 The app is intentionally small in scope:
 
@@ -16,7 +16,7 @@ The app does not have a backend.
 ## Repository Layout
 
 ```text
-debrid-hub/
+cue/
 ├── shared/       # Shared KMP domain, data, auth, reminders, diagnostics
 ├── androidApp/   # Active Android app (Jetpack Compose)
 ├── iosApp/       # Active iOS host app (SwiftUI + Xcode project)
@@ -62,8 +62,8 @@ Notable shared behavior:
 The Android app is the active Android runtime target. It uses:
 
 - `MainActivity` as the launcher activity
-- `DebridHubViewModel` for UI state and auth/reminder orchestration
-- Jetpack Compose UI defined in `DebridHubApp.kt`
+- `CueViewModel` for UI state and auth/reminder orchestration
+- Jetpack Compose UI defined in `CueApp.kt`
 - `EncryptedSharedPreferences` for auth state storage
 - `AlarmManager` plus `BroadcastReceiver` notifications for reminders
 
@@ -78,7 +78,7 @@ framework produced by the `shared` module. It uses:
 - `IOSAppViewModel` as the SwiftUI view model bridge
 - `ContentView.swift` for the primary native UI
 - an in-app Safari sheet for the authorization page
-- the shared `DebridHubController` from the KMP layer
+- the shared `CueController` from the KMP layer
 
 Current iOS storage note:
 
@@ -88,7 +88,7 @@ Current iOS storage note:
 
 ## Authentication Flow
 
-DebridHub follows Real-Debrid's documented OAuth2 workflow for open-source
+Cue follows Real-Debrid's documented OAuth2 workflow for open-source
 apps:
 
 1. Request a device code with `new_credentials=yes`.

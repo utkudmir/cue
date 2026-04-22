@@ -1,0 +1,80 @@
+name: release-to-stores
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Approved release tag (vX.Y.Z)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  app-store:
+    runs-on: macos-15
+    environment: production-app-store
+    steps:
+      - name: Checkout approved tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_tag }}
+
+      - name: Download signed candidate artifacts
+        uses: dawidd6/action-download-artifact@v11
+        with:
+          workflow: build-release-candidate.yml
+          name: release-candidate-${{ inputs.release_tag }}
+          path: candidate
+
+      - name: Bundle install
+        run: bundle install --path vendor/bundle
+
+      - name: Set release variables
+        run: |
+          echo "CUE_MARKETING_VERSION=${INPUT_TAG#v}" >> "$GITHUB_ENV"
+          echo "CUE_APP_STORE_BUILD_PATH=$(find "$PWD/candidate" -name '*.ipa' | head -n 1)" >> "$GITHUB_ENV"
+        env:
+          INPUT_TAG: ${{ inputs.release_tag }}
+
+      - name: Prepare fastlane metadata
+        run: bundle exec fastlane ios prepare_metadata
+
+      - name: Upload App Store metadata
+        run: bundle exec fastlane ios upload_metadata
+
+      - name: Upload App Store build
+        run: bundle exec fastlane ios upload_build
+
+  play-store:
+    runs-on: ubuntu-24.04
+    environment: production-play-store
+    steps:
+      - name: Checkout approved tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_tag }}
+
+      - name: Download signed candidate artifacts
+        uses: dawidd6/action-download-artifact@v11
+        with:
+          workflow: build-release-candidate.yml
+          name: release-candidate-${{ inputs.release_tag }}
+          path: candidate
+
+      - name: Bundle install
+        run: bundle install --path vendor/bundle
+
+      - name: Set release variables
+        run: |
+          echo "CUE_MARKETING_VERSION=${INPUT_TAG#v}" >> "$GITHUB_ENV"
+          echo "CUE_PLAY_BUILD_PATH=$(find "$PWD/candidate" -name '*.aab' | head -n 1)" >> "$GITHUB_ENV"
+        env:
+          INPUT_TAG: ${{ inputs.release_tag }}
+
+      - name: Upload Play listing assets
+        run: bundle exec fastlane android upload_listing
+
+      - name: Upload closed testing build
+        run: bundle exec fastlane android upload_closed_test

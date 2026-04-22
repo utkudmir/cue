@@ -1,11 +1,14 @@
-name: DebridHubHost
+name: CueHost
 options:
   deploymentTarget:
-    iOS: "18.0"
+    iOS: "17.0"
 settings:
   base:
-    PRODUCT_BUNDLE_IDENTIFIER: app.debridhub.ios
-    PRODUCT_NAME: DebridHub
+    PRODUCT_BUNDLE_IDENTIFIER: com.utkudemir.cue
+    PRODUCT_NAME: Cue
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     SWIFT_VERSION: "5.10"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
@@ -16,17 +19,17 @@ settings:
       - $(inherited)
       - "@executable_path/Frameworks"
 targets:
-  DebridHubHost:
+  CueHost:
     type: application
     platform: iOS
-    deploymentTarget: "18.0"
+    deploymentTarget: "17.0"
     sources:
-      - path: DebridHubHost
+      - path: CueHost
         excludes:
           - Info.plist
     settings:
       base:
-        INFOPLIST_FILE: DebridHubHost/Info.plist
+        INFOPLIST_FILE: CueHost/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
     preBuildScripts:
       - name: Build Shared Framework
@@ -44,32 +47,32 @@ targets:
     dependencies:
       - framework: ../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/Shared.framework
         embed: true
-  DebridHubHostTests:
+  CueHostTests:
     type: bundle.unit-test
     platform: iOS
-    deploymentTarget: "18.0"
+    deploymentTarget: "17.0"
     sources:
-      - path: DebridHubHostTests
+      - path: CueHostTests
     dependencies:
-      - target: DebridHubHost
+      - target: CueHost
       - framework: ../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/Shared.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.debridhub.ios.tests
-        PRODUCT_NAME: DebridHubHostTests
-        SWIFT_MODULE_NAME: DebridHubHostTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.utkudemir.cue.tests
+        PRODUCT_NAME: CueHostTests
+        SWIFT_MODULE_NAME: CueHostTests
         GENERATE_INFOPLIST_FILE: YES
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DebridHub.app/DebridHub"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Cue.app/Cue"
         BUNDLE_LOADER: "$(TEST_HOST)"
 schemes:
-  DebridHubHost:
+  CueHost:
     build:
       targets:
-        DebridHubHost: all
-        DebridHubHostTests: [test]
+        CueHost: all
+        CueHostTests: [test]
     test:
       gatherCoverageData: false
       targets:
-        - name: DebridHubHostTests
+        - name: CueHostTests
     run:
       config: Debug

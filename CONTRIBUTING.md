@@ -1,6 +1,6 @@
-# Contributing to DebridHub
+# Contributing to Cue
 
-Thanks for helping improve DebridHub.
+Thanks for helping improve Cue.
 
 This project is intentionally scoped to a narrow, lower-risk feature set:
 
@@ -80,7 +80,7 @@ Before opening a PR, ensure:
 
 ## Localization Contributions
 
-DebridHub localization is managed from a single canonical YAML catalog in
+Cue localization is managed from a single canonical YAML catalog in
 `localization/strings.yml`.
 
 - Update the YAML source instead of editing generated outputs by hand.

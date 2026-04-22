@@ -1,6 +1,6 @@
 # Governance
 
-DebridHub follows a maintainer-led governance model.
+Cue follows a maintainer-led governance model.
 
 ## Decision Model
 

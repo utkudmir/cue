@@ -36,8 +36,8 @@ else
 fi
 
 xcodebuild \
-  -project "$ROOT_DIR/iosApp/DebridHubHost.xcodeproj" \
-  -scheme DebridHubHost \
+  -project "$ROOT_DIR/iosApp/CueHost.xcodeproj" \
+  -scheme CueHost \
   -configuration Debug \
   -destination "$DESTINATION" \
   -derivedDataPath "$DERIVED_DATA_PATH" \

@@ -3,12 +3,12 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_SPEC="$ROOT_DIR/iosApp/project.yml"
-PROJECT_FILE="$ROOT_DIR/iosApp/DebridHubHost.xcodeproj"
+PROJECT_FILE="$ROOT_DIR/iosApp/CueHost.xcodeproj"
 PBXPROJ_FILE="$PROJECT_FILE/project.pbxproj"
 FORCE_GENERATE="${FORCE_IOS_PROJECT_GENERATE:-0}"
 GENERATED_LOCALIZATION_DIRS=(
-  "$ROOT_DIR/iosApp/DebridHubHost/Generated"
-  "$ROOT_DIR/iosApp/DebridHubHost/Resources"
+  "$ROOT_DIR/iosApp/CueHost/Generated"
+  "$ROOT_DIR/iosApp/CueHost/Resources"
 )
 
 generated_localizations_changed_since_project() {

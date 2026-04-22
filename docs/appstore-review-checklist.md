@@ -10,7 +10,7 @@ Use this checklist before iOS submission and during RC sign-off.
 
 ## Privacy and Data Handling
 
-- [ ] App remains local-first (no DebridHub backend token sync).
+- [ ] App remains local-first (no Cue backend token sync).
 - [ ] No analytics/tracking SDK added without explicit policy update.
 - [ ] Diagnostics export excludes secrets and personal data.
 - [ ] iOS auth storage remains Keychain-backed (legacy defaults migration only).

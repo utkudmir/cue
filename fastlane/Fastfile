@@ -1,0 +1,80 @@
+default_platform(:ios)
+
+require "base64"
+
+def sync_branding_screenshots
+  require "fileutils"
+
+  app_store_source = "branding/screenshots/exports/app-store"
+  play_store_source = "branding/screenshots/exports/play-store"
+  app_store_target = "fastlane/screenshots/en-US"
+  play_store_target = "fastlane/metadata/android/en-US/images/phoneScreenshots"
+
+  FileUtils.rm_rf(app_store_target)
+  FileUtils.rm_rf(play_store_target)
+  FileUtils.mkdir_p(app_store_target)
+  FileUtils.mkdir_p(play_store_target)
+
+  FileUtils.cp_r(Dir.glob("#{app_store_source}/*"), app_store_target) if Dir.exist?(app_store_source)
+  FileUtils.cp_r(Dir.glob("#{play_store_source}/*"), play_store_target) if Dir.exist?(play_store_source)
+end
+
+platform :ios do
+  lane :prepare_metadata do
+    sync_branding_screenshots
+  end
+
+  lane :upload_metadata do
+    deliver(
+      app_version: ENV["CUE_MARKETING_VERSION"],
+      skip_binary_upload: true,
+      skip_screenshots: false,
+      force: true,
+      submit_for_review: false,
+      automatic_release: false
+    )
+  end
+
+  lane :upload_build do
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APP_STORE_CONNECT_API_KEY_ID"),
+      issuer_id: ENV.fetch("APP_STORE_CONNECT_ISSUER_ID"),
+      key_content: Base64.decode64(ENV.fetch("APP_STORE_CONNECT_API_KEY_BASE64")),
+      is_key_content_base64: false
+    )
+
+    pilot(
+      api_key: api_key,
+      ipa: ENV.fetch("CUE_APP_STORE_BUILD_PATH"),
+      skip_submission: true,
+      skip_waiting_for_build_processing: false,
+      distribute_external: false
+    )
+  end
+end
+
+platform :android do
+  lane :upload_listing do
+    sync_branding_screenshots
+    supply(
+      aab: ENV["CUE_PLAY_BUILD_PATH"],
+      track: "internal",
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_images: false,
+      skip_upload_screenshots: false,
+      skip_upload_metadata: false
+    )
+  end
+
+  lane :upload_closed_test do
+    supply(
+      aab: ENV.fetch("CUE_PLAY_BUILD_PATH"),
+      track: "closed",
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_metadata: true,
+      release_status: "draft"
+    )
+  end
+end

@@ -9,7 +9,7 @@ body:
     id: language_name
     attributes:
       label: Language name
-      description: What language should DebridHub support?
+      description: What language should Cue support?
       placeholder: Turkish
     validations:
       required: true

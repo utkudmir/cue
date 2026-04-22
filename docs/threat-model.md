@@ -1,7 +1,7 @@
 # Threat Model
 
 This document summarizes the main security assumptions and current known gaps in
-DebridHub.
+Cue.
 
 ## Assets
 
@@ -30,14 +30,14 @@ DebridHub.
 
 ### Local-Only Architecture
 
-DebridHub has no backend. Tokens are not forwarded to any DebridHub service
+Cue has no backend. Tokens are not forwarded to any Cue service
 because no such service exists.
 
 ### OAuth2 Device Flow
 
 The app uses Real-Debrid's documented device flow for open-source apps. The
 user authorizes on a Real-Debrid page instead of entering account credentials
-directly into DebridHub.
+directly into Cue.
 
 ### Android Secure Storage
 

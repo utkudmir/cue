@@ -33,7 +33,7 @@ scripts/redact-shareable-report.sh build/rc-verify
 
 ## Supported Scope
 
-DebridHub is currently scoped to:
+Cue is currently scoped to:
 
 - OAuth2 device flow
 - `/rest/1.0/user` account status

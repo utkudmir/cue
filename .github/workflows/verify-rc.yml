@@ -444,7 +444,7 @@ jobs:
       matrix: ${{ fromJSON(needs['plan-verification'].outputs.android_matrix) }}
     env:
       ANDROID_VERIFY_LOG_DIR: ${{ github.workspace }}/build/rc-verify/android/${{ matrix.slug }}
-      ANDROID_PACKAGE: app.debridhub
+      ANDROID_PACKAGE: com.utkudemir.cue
     steps:
       - name: Checkout
         uses: actions/checkout@v6

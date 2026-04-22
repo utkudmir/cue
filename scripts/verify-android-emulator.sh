@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APK_PATH="${1:-}"
-PACKAGE_NAME="${2:-app.debridhub}"
+PACKAGE_NAME="${2:-com.utkudemir.cue}"
 LOG_DIR="${ANDROID_VERIFY_LOG_DIR:-$PWD/build/rc-verify/android/manual}"
 LOG_FILE="$LOG_DIR/verify.log"
 

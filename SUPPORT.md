@@ -1,6 +1,6 @@
 # Support
 
-Thanks for using DebridHub.
+Thanks for using Cue.
 
 ## Before Opening an Issue
 
@@ -10,6 +10,7 @@ Thanks for using DebridHub.
 
 ## Where to Ask for Help
 
+- **Support email:** `cue.app.support@gmail.com`
 - **Bug reports:** open a `Bug report` issue.
 - **Feature ideas:** open a `Feature request` issue.
 - **Language requests:** open a `Language request` issue.
@@ -27,7 +28,7 @@ Do not report vulnerabilities in public issues.
 
 Use private reporting via GitHub Security Advisories:
 
-- https://github.com/utkudmir/debrid-hub/security/advisories/new
+- https://github.com/utkudmir/cue/security/advisories/new
 
 See `SECURITY.md` for response targets and disclosure expectations.
 

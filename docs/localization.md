@@ -1,13 +1,13 @@
 # Localization
 
-DebridHub localization is managed from a single canonical YAML catalog:
+Cue localization is managed from a single canonical YAML catalog:
 
 - `localization/strings.yml`
 
 Generated outputs are checked into the repository so changes stay reviewable:
 
 - Android resources in `androidApp/src/main/res/values*/strings.xml`
-- iOS generated localizer and bundle resources under `iosApp/DebridHubHost/`
+- iOS generated localizer and bundle resources under `iosApp/CueHost/`
 - Shared Kotlin localization catalog under `shared/src/commonMain/kotlin/.../localization/`
 
 ## Workflow

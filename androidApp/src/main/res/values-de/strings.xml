@@ -15,7 +15,7 @@
     <string name="account_username">Benutzername: %1$s</string>
     <string name="common_actions">Aktionen</string>
     <string name="common_active">Aktiv</string>
-    <string name="common_app_name">DebridHub</string>
+    <string name="common_app_name">Cue</string>
     <string name="common_back">Zurück</string>
     <string name="common_cancel_authorization">Autorisierung abbrechen</string>
     <string name="common_connect_real_debrid">Real-Debrid verbinden</string>
@@ -59,27 +59,27 @@
     <string name="onboarding_before_connect_step_1">1. Tippe auf Real-Debrid verbinden, um einen Gerätecode anzufordern.</string>
     <string name="onboarding_before_connect_step_2">2. Kopiere den Code bei Bedarf und bestätige das Gerät anschließend bei Real-Debrid.</string>
     <string name="onboarding_before_connect_step_3">3. Wenn die Browser-Weiterleitung unterbrochen wird, verwende unten Autorisierungsseite öffnen.</string>
-    <string name="onboarding_before_connect_step_4">4. Kehre hierher zurück, während DebridHub auf die Bestätigung wartet.</string>
+    <string name="onboarding_before_connect_step_4">4. Kehre hierher zurück, während Cue auf die Bestätigung wartet.</string>
     <string name="onboarding_before_connect_step_5">Du kannst zuerst das Vertrauenszentrum öffnen, wenn du Datenschutz, Sicherheit, Diagnosen und Compliance-Details prüfen möchtest.</string>
     <string name="onboarding_before_connect_title">Bevor du verbindest</string>
     <string name="onboarding_direct_verification_url">Direkte Bestätigungs-URL: %1$s</string>
     <string name="onboarding_enter_code">Gib diesen Code bei Real-Debrid ein.</string>
     <string name="onboarding_finish_authorization_title">Autorisierung abschließen</string>
-    <string name="onboarding_hero_body">DebridHub kommuniziert direkt mit der offiziellen Real-Debrid-API. Tokens bleiben auf dem Gerät und es wird kein Backend verwendet.</string>
+    <string name="onboarding_hero_body">Cue kommuniziert direkt mit der offiziellen Real-Debrid-API. Tokens bleiben auf dem Gerät und es wird kein Backend verwendet.</string>
     <string name="onboarding_hero_title">Behalte dein Real-Debrid-Abonnement im Blick und verlängere es, bevor es abläuft.</string>
     <string name="onboarding_notifications_already_enabled">Benachrichtigungen sind auf diesem Gerät bereits aktiviert.</string>
-    <string name="onboarding_notifications_disabled_help">Benachrichtigungen sind für DebridHub derzeit deaktiviert. Du kannst die Berechtigungsanfrage erneut versuchen oder die Alarme in den Systemeinstellungen wieder aktivieren.</string>
+    <string name="onboarding_notifications_disabled_help">Benachrichtigungen sind für Cue derzeit deaktiviert. Du kannst die Berechtigungsanfrage erneut versuchen oder die Alarme in den Systemeinstellungen wieder aktivieren.</string>
     <string name="onboarding_notifications_later">Du kannst Benachrichtigungen jetzt oder später aktivieren. Erinnerungsalarme beginnen, sobald dein Konto verbunden ist.</string>
     <string name="onboarding_polling_until">Prüfung alle %1$ss bis %2$s</string>
     <string name="onboarding_verification_url">Bestätigungs-URL: %1$s</string>
-    <string name="onboarding_waiting_for_approval">Warte auf die Bestätigung von Real-Debrid. Nachdem du das Gerät bestätigt hast, kehre hierher zurück und DebridHub schließt die Anmeldung automatisch ab.</string>
+    <string name="onboarding_waiting_for_approval">Warte auf die Bestätigung von Real-Debrid. Nachdem du das Gerät bestätigt hast, kehre hierher zurück und Cue schließt die Anmeldung automatisch ab.</string>
     <plurals name="reminders_day_count">
         <item quantity="one">%1$s Tag</item>
         <item quantity="other">%1$s Tage</item>
     </plurals>
     <string name="reminders_days_before_expiry">Tage vor Ablauf</string>
     <string name="reminders_enable">Erinnerungen aktivieren</string>
-    <string name="reminders_local_schedule_intro">DebridHub wird diese lokalen Benachrichtigungen auf diesem Gerät planen:</string>
+    <string name="reminders_local_schedule_intro">Cue wird diese lokalen Benachrichtigungen auf diesem Gerät planen:</string>
     <string name="reminders_no_future_planned">Derzeit sind keine zukünftigen Erinnerungen geplant. Das kann passieren, wenn das Ablaufdatum sehr nah ist, bereits vorbei ist oder deine gewählten Erinnerungsfenster bereits in der Vergangenheit liegen.</string>
     <string name="reminders_notification_expired_yesterday">Dein Real-Debrid-Abonnement ist gestern abgelaufen</string>
     <plurals name="reminders_notification_expires_in">
@@ -87,7 +87,7 @@
         <item quantity="other">Dein Real-Debrid-Abonnement läuft in %1$s Tagen ab</item>
     </plurals>
     <string name="reminders_notification_expires_today">Dein Real-Debrid-Abonnement läuft heute ab</string>
-    <string name="reminders_notifications_disabled">Erinnerungen sind geplant, aber Benachrichtigungen sind für DebridHub deaktiviert. Aktiviere sie in den Systemeinstellungen wieder, wenn du diese Hinweise erhalten möchtest.</string>
+    <string name="reminders_notifications_disabled">Erinnerungen sind geplant, aber Benachrichtigungen sind für Cue deaktiviert. Aktiviere sie in den Systemeinstellungen wieder, wenn du diese Hinweise erhalten möchtest.</string>
     <string name="reminders_notify_after_expiry">Nach Ablauf benachrichtigen</string>
     <string name="reminders_notify_on_expiry">Am Ablaufdatum benachrichtigen</string>
     <string name="reminders_planned_times">Geplante Erinnerungszeiten:</string>
@@ -99,15 +99,15 @@
     <string name="reminders_turned_off">Erinnerungen sind derzeit deaktiviert.</string>
     <string name="trust_center_about_line_1">Der aktuelle Umfang ist absichtlich eng gefasst: Kontoauthentifizierung, Abrufe des Kontostatus, lokale Erinnerungsplanung und lokaler Diagnoseexport.</string>
     <string name="trust_center_about_line_2">Die App implementiert derzeit weder Unrestrict, Downloads, Torrent-Verwaltung, Streaming, das Teilen generierter Links noch Multi-User-Kontoverwaltung.</string>
-    <string name="trust_center_about_line_3">DebridHub verwendet offizielle Real-Debrid-API-Endpunkte und den dokumentierten Device-Auth-Flow. Nutzer bleiben selbst dafür verantwortlich, die Real-Debrid-Bedingungen und Kontoregeln einzuhalten.</string>
+    <string name="trust_center_about_line_3">Cue verwendet offizielle Real-Debrid-API-Endpunkte und den dokumentierten Device-Auth-Flow. Nutzer bleiben selbst dafür verantwortlich, die Real-Debrid-Bedingungen und Kontoregeln einzuhalten.</string>
     <string name="trust_center_about_title">Überblick &amp; Compliance</string>
     <string name="trust_center_diagnostics_line_1">Der Diagnoseexport enthält derzeit die App-Version, die OS-Version, den Zeitstempel der letzten Synchronisierung, den Ablaufstatus des Kontos und begrenzte nicht sensible Laufzeitflags.</string>
     <string name="trust_center_diagnostics_line_2">Der Diagnoseexport schließt Zugriffstokens, Refresh-Tokens, Client-Secrets, Benutzernamen, E-Mail-Adresse und den vollständigen Kontoverlauf aus.</string>
     <string name="trust_center_diagnostics_title">Diagnosen</string>
     <string name="trust_center_hero_body">Dies ist In-App-Produkttext basierend auf der aktuellen Implementierung, keine Marketing-Schicht und keine Webansicht.</string>
-    <string name="trust_center_hero_title">Sieh dir genau an, wie DebridHub Authentifizierung, Speicherung, Diagnosen und Funktionsgrenzen handhabt.</string>
+    <string name="trust_center_hero_title">Sieh dir genau an, wie Cue Authentifizierung, Speicherung, Diagnosen und Funktionsgrenzen handhabt.</string>
     <string name="trust_center_preview_unavailable">Die Diagnosevorschau ist noch nicht verfügbar.</string>
-    <string name="trust_center_privacy_line_1">DebridHub hat kein Backend. Die App spricht direkt von deinem Gerät mit Real-Debrid.</string>
+    <string name="trust_center_privacy_line_1">Cue hat kein Backend. Die App spricht direkt von deinem Gerät mit Real-Debrid.</string>
     <string name="trust_center_privacy_line_2">Es gibt in der aktuellen App kein Analyse-SDK, kein Tracking-Pixel, keinen Crash-Reporting-Dienst und keine Kontosynchronisierung über einen Server.</string>
     <string name="trust_center_privacy_line_3">Erinnerungsbenachrichtigungen sind lokal auf diesem Gerät und werden anhand des lokal gespeicherten Kontostatus geplant.</string>
     <string name="trust_center_privacy_line_4">Der Diagnoseexport ist manuell. Es wird nichts irgendwohin gesendet, es sei denn, du teilst die exportierte Datei ausdrücklich selbst.</string>
@@ -115,6 +115,6 @@
     <string name="trust_center_security_line_1">Die Authentifizierung verwendet den offiziellen OAuth2-Device-Flow von Real-Debrid statt einer Passworteingabe.</string>
     <string name="trust_center_security_line_2_android">Android speichert den Authentifizierungsstatus mit EncryptedSharedPreferences.</string>
     <string name="trust_center_security_line_2_ios">iOS speichert den Authentifizierungsstatus im Schlüsselbund und migriert beim ersten Lesen den alten NSUserDefaults-Status.</string>
-    <string name="trust_center_security_line_3">Beim Trennen werden gespeicherter Authentifizierungsstatus gelöscht und Erinnerungen abgebrochen. DebridHub benötigt keinen Begleitserver, um zu funktionieren.</string>
+    <string name="trust_center_security_line_3">Beim Trennen werden gespeicherter Authentifizierungsstatus gelöscht und Erinnerungen abgebrochen. Cue benötigt keinen Begleitserver, um zu funktionieren.</string>
     <string name="trust_center_security_title">Sicherheit</string>
 </resources>

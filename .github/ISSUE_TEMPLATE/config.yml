@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability report (private)
-    url: https://github.com/utkudmir/debrid-hub/security/advisories/new
+    url: https://github.com/utkudmir/cue/security/advisories/new
     about: Please do not open public issues for vulnerabilities. Use the private reporting path in SECURITY.md.
   - name: Project support and questions
-    url: https://github.com/utkudmir/debrid-hub/blob/main/SUPPORT.md
+    url: https://github.com/utkudmir/cue/blob/main/SUPPORT.md
     about: Follow the support guide first, then open a Bug report or Feature request if needed.
   - name: Project wiki
-    url: https://github.com/utkudmir/debrid-hub/wiki
+    url: https://github.com/utkudmir/cue/wiki
     about: Reference architecture, CI, and localization notes.

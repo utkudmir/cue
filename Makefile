@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help localization-generate localization-check shared-static-analysis shared-test android-debug android-connected-test coverage ios-project ios-open ios-lint ios-build ios-test ios-run verify-rc provision-devices security-scan-secrets clean-local
+.PHONY: help localization-generate localization-check shared-static-analysis shared-test android-debug android-connected-test coverage ios-project ios-open ios-lint ios-build ios-test ios-run screenshot-refresh verify-rc provision-devices security-scan-secrets clean-local
 
 help:
 	@echo "make localization-generate - Generate Android, iOS, and shared localization outputs"
@@ -16,6 +16,7 @@ help:
 	@echo "make ios-build    - Build the iOS simulator app"
 	@echo "make ios-test     - Run the iOS XCTest suite on simulator"
 	@echo "make ios-run      - Build, install, and launch the iOS simulator app"
+	@echo "make screenshot-refresh - Capture app scenes and regenerate store screenshots"
 	@echo "make verify-rc    - Run release-candidate verification gate"
 	@echo "make provision-devices - Provision simulators/AVDs from device pool"
 	@echo "make security-scan-secrets - Scan tracked files for leaked secrets"
@@ -59,6 +60,9 @@ ios-test:
 
 ios-run:
 	./scripts/run-ios-sim.sh
+
+screenshot-refresh:
+	./scripts/refresh-store-screenshots.sh
 
 verify-rc:
 	./scripts/verify-rc.sh

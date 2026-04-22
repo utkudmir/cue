@@ -1,4 +1,4 @@
-# DebridHub Agent Notes
+# Cue Agent Notes
 
 ## Repo Truths That Matter
 - Active Gradle modules are only `:shared` and `:androidApp` (`settings.gradle.kts`).
@@ -6,9 +6,9 @@
 - If docs and code disagree, trust executable sources (`Makefile`, Gradle files, scripts, code).
 
 ## Real Entrypoints / Wiring
-- Android runtime path: `androidApp MainActivity.kt` -> `buildAndroidAppGraph` (`AndroidAppGraph.kt`) -> `DebridHubViewModel`.
-- iOS runtime path: `iosApp/DebridHubHost/DebridHubApp.swift` -> `IOSAppViewModel.swift` -> `IosAppGraph` -> shared `DebridHubController`.
-- Shared app orchestration lives in `shared DebridHubController.kt`; when adding cross-platform behavior, wire both app graphs.
+- Android runtime path: `androidApp MainActivity.kt` -> `buildAndroidAppGraph` (`AndroidAppGraph.kt`) -> `CueViewModel`.
+- iOS runtime path: `iosApp/CueHost/CueApp.swift` -> `IOSAppViewModel.swift` -> `IosAppGraph` -> shared `CueController`.
+- Shared app orchestration lives in `shared CueController.kt`; when adding cross-platform behavior, wire both app graphs.
 
 ## Commands (Verified from Makefile/Gradle)
 - Preferred local commands:
@@ -16,14 +16,14 @@
   - `make android-debug` (runs `:androidApp:assembleDebug`)
   - `make ios-project`, `make ios-open`, `make ios-build`, `make ios-test`, `make ios-run`
 - Focused verification:
-  - Single shared test (example): `./gradlew :shared:iosSimulatorArm64Test --tests "app.debridhub.shared.core.RealDebridErrorMessagesTest"`
+  - Single shared test (example): `./gradlew :shared:iosSimulatorArm64Test --tests "com.utkudemir.cue.shared.core.RealDebridErrorMessagesTest"`
   - Android lint + unit tests: `./gradlew :androidApp:lint :androidApp:testDebugUnitTest`
 
 ## Toolchain / iOS Script Quirks
 - JDK 21 is required; Make/iOS scripts auto-resolve `JAVA_HOME` with `/usr/libexec/java_home -v 21`.
 - iOS scripts resolve a phone-class simulator dynamically; override with `IOS_SIMULATOR_NAME="<device>"` or `IOS_DEVICE_CLASS="latest-phone|small-phone|large-phone"` when needed.
 - `make ios-run` builds to `build/ios-derived-data` by default; override with `DERIVED_DATA_PATH` if needed.
-- `iosApp/project.yml` targets iOS `18.0`; ensure your Xcode/simulator runtime matches.
+- `iosApp/project.yml` targets iOS `17.0`; ensure your Xcode/simulator runtime matches.
 
 ## Non-Obvious Behavior To Preserve
 - Real-Debrid API client intentionally supports host failover between `https://api.real-debrid.com` and `https://api-1.real-debrid.com` (`RealDebridApi.kt`).

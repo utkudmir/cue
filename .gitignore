@@ -12,9 +12,19 @@ build/
 .DS_Store
 
 # Xcode user data / derived artifacts
-iosApp/DebridHubHost.xcodeproj/project.xcworkspace/xcuserdata/
-iosApp/DebridHubHost.xcodeproj/xcuserdata/
+iosApp/CueHost.xcodeproj/project.xcworkspace/xcuserdata/
+iosApp/CueHost.xcodeproj/xcuserdata/
 *.xcuserstate
+
+# Ruby / fastlane local installs
+.bundle/
+vendor/bundle/
+
+# Local JS tooling
+node_modules/
+.next/
+tools/screenshot-studio/node_modules/
+tools/screenshot-studio/.next/
 
 # Local env
 .env

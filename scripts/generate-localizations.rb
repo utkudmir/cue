@@ -150,7 +150,7 @@ end
 
 def render_kotlin_catalog(base_locale, locales)
   lines = []
-  lines << "package app.debridhub.shared.localization"
+  lines << "package com.utkudemir.cue.shared.localization"
   lines << ""
   lines << "internal object GeneratedLocalizationCatalog {"
   lines << "    const val baseLocale: String = \"#{kotlin_escape(base_locale)}\""
@@ -281,11 +281,11 @@ end
 
 IOS_LPROJ_DIRS.each do |locale, directory|
   entries = locales.fetch(locale)
-  outputs[File.join(ROOT_DIR, "iosApp", "DebridHubHost", "Resources", directory, "Localizable.strings")] = render_ios_strings(locale, entries)
+  outputs[File.join(ROOT_DIR, "iosApp", "CueHost", "Resources", directory, "Localizable.strings")] = render_ios_strings(locale, entries)
 end
 
-outputs[File.join(ROOT_DIR, "shared", "src", "commonMain", "kotlin", "app", "debridhub", "shared", "localization", "GeneratedLocalizationCatalog.kt")] = render_kotlin_catalog(base_locale, locales)
-outputs[File.join(ROOT_DIR, "iosApp", "DebridHubHost", "Generated", "AppL10n.generated.swift")] = render_swift_catalog(base_locale, locales)
+outputs[File.join(ROOT_DIR, "shared", "src", "commonMain", "kotlin", "com", "utkudemir", "cue", "shared", "localization", "GeneratedLocalizationCatalog.kt")] = render_kotlin_catalog(base_locale, locales)
+outputs[File.join(ROOT_DIR, "iosApp", "CueHost", "Generated", "AppL10n.generated.swift")] = render_swift_catalog(base_locale, locales)
 
 if check_mode
   stale_outputs = outputs.select do |path, content|

@@ -1,6 +1,6 @@
 # Diagnostics Payload Example
 
-DebridHub can export a local JSON diagnostics file when the user explicitly
+Cue can export a local JSON diagnostics file when the user explicitly
 asks for it. The file is intended for manual troubleshooting and is not sent
 automatically anywhere.
 

@@ -60,7 +60,7 @@
 - `make ios-test` -> PASS
 - `make coverage` -> PASS
 - `make ios-build` -> PASS
-- `xcodebuild ... -scheme DebridHubHost ... test` -> PASS
+- `xcodebuild ... -scheme CueHost ... test` -> PASS
 
 ## Mevcut Local Durum
 - Calisma agaci temiz hedeflenir; yeni ise baslarken `git status` ile dogrula.
@@ -89,8 +89,8 @@ Kalan ana is paketi coverage esigini kontrollu artirmak.
 ## Teknik Notlar / Guardrail
 - Aktif Gradle modulleri: `:shared` ve `:androidApp`.
 - iOS proje source of truth: `iosApp/project.yml` (xcodeproj regenerate edilir).
-- iOS runtime: `DebridHubApp.swift` -> `IOSAppViewModel.swift` -> `IosAppGraph` -> shared `DebridHubController`.
-- Shared orchestration: `shared/src/commonMain/kotlin/app/debridhub/shared/DebridHubController.kt`.
+- iOS runtime: `CueApp.swift` -> `IOSAppViewModel.swift` -> `IosAppGraph` -> shared `CueController`.
+- Shared orchestration: `shared/src/commonMain/kotlin/com/utkudemir/cue/shared/CueController.kt`.
 - Product boundary koru: OAuth device flow + `/rest/1.0/user` + local reminders/diagnostics.
 - Eklenmeyecek alanlar: `/unrestrict/*`, `/downloads/*`, `/torrents/*`, `/streaming/*`.
 

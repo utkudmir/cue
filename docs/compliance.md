@@ -1,6 +1,6 @@
 # Compliance Notes
 
-This document records the current feature boundary of DebridHub against
+This document records the current feature boundary of Cue against
 Real-Debrid's public API documentation and published Terms of Service.
 
 It is a project note for engineering decisions, not legal advice.
@@ -14,7 +14,7 @@ It is a project note for engineering decisions, not legal advice.
 
 ## Current Integration Scope
 
-DebridHub currently uses:
+Cue currently uses:
 
 - the documented OAuth2 device flow for open-source apps
 - the authenticated `/rest/1.0/user` endpoint
@@ -73,7 +73,7 @@ Before adding any of the following, do a fresh compliance review:
 ## Current Residual Risks
 
 - The service terms can change, so this note should be revisited over time.
-- Users can still misuse their Real-Debrid accounts outside the app; DebridHub
+- Users can still misuse their Real-Debrid accounts outside the app; Cue
   does not control that behavior.
 - iOS auth storage is Keychain-backed; migration from legacy
   `NSUserDefaults` data should remain verified as the app evolves.

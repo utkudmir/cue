@@ -1,8 +1,8 @@
 schema_version: 1
 
 defaults:
-  android_package: app.debridhub
-  ios_bundle_id: app.debridhub.ios
+  android_package: com.utkudemir.cue
+  ios_bundle_id: com.utkudemir.cue
   signoff_owner: release-manager
 
 profiles:

@@ -30,6 +30,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DebridHub"
+rootProject.name = "Cue"
 
 include("shared", "androidApp")

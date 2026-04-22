@@ -1,13 +1,13 @@
 # Privacy Policy
 
-DebridHub is designed to keep user data on-device whenever possible. This
+Cue is designed to keep user data on-device whenever possible. This
 document describes the data the app handles in its current implementation.
 
 ## Data the App Uses
 
 ### Real-Debrid Auth State
 
-DebridHub uses Real-Debrid's official OAuth2 device flow to obtain:
+Cue uses Real-Debrid's official OAuth2 device flow to obtain:
 
 - an access token
 - a refresh token
@@ -31,7 +31,7 @@ Real-Debrid `/rest/1.0/user` endpoint and reads:
 - expiration timestamp
 
 This information is used to build the local `AccountStatus` model and drive the
-reminder planner. It is not uploaded to any DebridHub server.
+reminder planner. It is not uploaded to any Cue server.
 
 ### Reminder Preferences
 
@@ -46,7 +46,7 @@ These preferences stay on-device.
 
 ### Diagnostics Export
 
-If the user explicitly exports diagnostics, DebridHub writes a local JSON file
+If the user explicitly exports diagnostics, Cue writes a local JSON file
 containing high-level information such as:
 
 - app version
@@ -59,7 +59,7 @@ The app does not automatically upload this file anywhere.
 
 ## Data the App Does Not Use
 
-DebridHub does not currently collect or transmit:
+Cue does not currently collect or transmit:
 
 - download history
 - generated links
@@ -78,7 +78,7 @@ Current API hosts:
 - `https://api.real-debrid.com`
 - `https://api-1.real-debrid.com` as a fallback when needed
 
-There is no DebridHub backend and no third-party analytics endpoint.
+There is no Cue backend and no third-party analytics endpoint.
 
 ## User Control
 

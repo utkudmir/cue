@@ -1,6 +1,6 @@
-# DebridHub
+# Cue
 
-DebridHub is a local-only mobile companion app for Real-Debrid subscribers.
+Cue is a local-only mobile companion app for Real-Debrid subscribers.
 Its current scope is intentionally narrow: authenticate with Real-Debrid using
 the official OAuth2 device flow, read the authenticated user's subscription
 status, show the premium expiry date, and schedule local reminder
@@ -43,6 +43,9 @@ talks directly to Real-Debrid's official API hosts.
 | `shared/` | Shared domain, data, auth, reminder, diagnostics, and platform abstraction code. |
 | `androidApp/` | Active Android app built with Jetpack Compose. |
 | `iosApp/` | Active native SwiftUI iOS host app and Xcode project definition. |
+| `site/` | GitHub Pages landing, privacy, support, and review pages. |
+| `branding/` | Brand source-of-truth for icon and screenshot assets. |
+| `fastlane/` | Store metadata and upload automation entry points. |
 | `docs/` | Architecture, auth, privacy, threat model, iOS setup, diagnostics example, and compliance notes. |
 
 See [docs/architecture.md](docs/architecture.md) for the implementation
@@ -88,6 +91,8 @@ IOS_DEVICE_CLASS=latest-phone make ios-run
 ```
 
 Supported iOS classes: `latest-phone`, `small-phone`, `large-phone`.
+
+Generate the GitHub Pages site locally by opening files under `site/` directly in a browser.
 
 Tune iOS test destination waiting (default 180 seconds):
 
@@ -173,7 +178,7 @@ CI quick notes:
 
 ## Security and Privacy
 
-DebridHub is designed to stay local-first:
+Cue is designed to stay local-first:
 
 For private vulnerability reporting, follow [SECURITY.md](SECURITY.md).
 
@@ -233,6 +238,9 @@ Contributing quick links:
 
 Release process uses semantic version tags (`vMAJOR.MINOR.PATCH`) and
 `CHANGELOG.md` as the source for published release notes.
+
+Brand assets live under `branding/` and official store metadata lives under
+`fastlane/`.
 
 Please avoid adding features that:
 

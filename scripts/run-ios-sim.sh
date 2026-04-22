@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$ROOT_DIR/build/ios-derived-data}"
-APP_PATH="$DERIVED_DATA_PATH/Build/Products/Debug-iphonesimulator/DebridHub.app"
-BUNDLE_ID="app.debridhub.ios"
+APP_PATH="$DERIVED_DATA_PATH/Build/Products/Debug-iphonesimulator/Cue.app"
+BUNDLE_ID="com.utkudemir.cue"
 SIMULATOR_NAME="${IOS_SIMULATOR_NAME:-}"
 SIMULATOR_UDID="${IOS_SIMULATOR_UDID:-}"
 IOS_SKIP_BUILD="${IOS_SKIP_BUILD:-0}"

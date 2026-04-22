@@ -1,6 +1,6 @@
 # Release Gate (RC)
 
-This document defines the release-candidate (RC) gate for DebridHub.
+This document defines the release-candidate (RC) gate for Cue.
 
 ## Decision Rule
 

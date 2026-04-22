@@ -10,16 +10,45 @@ plugins {
     jacoco
 }
 
+val marketingVersion = providers.environmentVariable("CUE_MARKETING_VERSION")
+    .orElse(providers.gradleProperty("cueMarketingVersion"))
+    .orElse("1.0.0")
+
+val buildNumber = providers.environmentVariable("CUE_BUILD_NUMBER")
+    .orElse(providers.gradleProperty("cueBuildNumber"))
+    .orElse("1")
+
 android {
-    namespace = "app.debridhub.android"
+    namespace = "com.utkudemir.cue.android"
     compileSdk = 36
 
+    val releaseKeystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH").orNull
+    val releaseKeystorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
+    val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
+    val releaseKeyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull
+
+    signingConfigs {
+        if (
+            !releaseKeystorePath.isNullOrBlank() &&
+            !releaseKeystorePassword.isNullOrBlank() &&
+            !releaseKeyAlias.isNullOrBlank() &&
+            !releaseKeyPassword.isNullOrBlank()
+        ) {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     defaultConfig {
-        applicationId = "app.debridhub"
+        applicationId = "com.utkudemir.cue"
         minSdk = 23
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = buildNumber.get().toInt()
+        versionName = marketingVersion.get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
@@ -29,6 +58,12 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
+    }
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            signingConfigs.findByName("release")?.let { signingConfig = it }
+        }
     }
     packaging {
         resources {
@@ -62,8 +97,8 @@ val coverageClassExcludes = listOf(
     "**/*$*",
     "**/AndroidAppGraph*",
     "**/ComposableSingletons*",
-    "**/DebridHubAppKt*",
-    "**/DebridHubViewModelFactory*",
+    "**/CueAppKt*",
+    "**/CueViewModelFactory*",
     "**/MainActivity*",
     "**/domain/model/**",
     "**/domain/repository/**",

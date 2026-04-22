@@ -1,6 +1,6 @@
 # Real-Debrid OAuth Device Flow
 
-This document describes the authentication flow used by DebridHub.
+This document describes the authentication flow used by Cue.
 
 The app uses Real-Debrid's documented OAuth2 **device flow for open-source
 apps**, not a username/password login flow and not the private API token paste
@@ -23,11 +23,11 @@ cannot safely ship a global `client_secret`. In that workflow:
 
 This keeps the user's Real-Debrid password and private token out of the app.
 
-## Current DebridHub Flow
+## Current Cue Flow
 
 1. **Request a device code**
 
-   DebridHub calls:
+   Cue calls:
 
    ```text
    GET /oauth/v2/device/code?client_id={clientId}&new_credentials=yes
@@ -42,7 +42,7 @@ This keeps the user's Real-Debrid password and private token out of the app.
    - `expires_in`
 
    In practice, Real-Debrid may also return `direct_verification_url`. When
-   present, DebridHub prefers it because it takes the user directly to the app
+   present, Cue prefers it because it takes the user directly to the app
    authorization page.
 
 2. **Show the code**
@@ -56,7 +56,7 @@ This keeps the user's Real-Debrid password and private token out of the app.
 
 4. **Poll for credentials**
 
-   DebridHub polls:
+   Cue polls:
 
    ```text
    GET /oauth/v2/device/credentials?client_id={clientId}&code={deviceCode}
@@ -66,7 +66,7 @@ This keeps the user's Real-Debrid password and private token out of the app.
 
 5. **Exchange for tokens**
 
-   DebridHub posts to:
+   Cue posts to:
 
    ```text
    POST /oauth/v2/token
@@ -94,7 +94,7 @@ This keeps the user's Real-Debrid password and private token out of the app.
    - `code={refresh_token}`
    - `grant_type=http://oauth.net/grant_type/device/1.0`
 
-   DebridHub follows that contract.
+   Cue follows that contract.
 
 7. **Disconnect**
 
@@ -102,7 +102,7 @@ This keeps the user's Real-Debrid password and private token out of the app.
 
 ## API Hosts
 
-DebridHub primarily targets:
+Cue primarily targets:
 
 - `https://api.real-debrid.com`
 
@@ -119,7 +119,7 @@ service.
 - The user authorizes on a Real-Debrid page, not by typing their password into
   the app.
 - Tokens stay local to the device.
-- The app does not send tokens to a DebridHub backend because there is no
+- The app does not send tokens to a Cue backend because there is no
   backend.
 
 Current implementation note:
@@ -130,7 +130,7 @@ Current implementation note:
 ## Compliance Notes
 
 This auth flow is part of Real-Debrid's public API documentation and is the
-intended integration path for mobile or open-source clients. DebridHub's
+intended integration path for mobile or open-source clients. Cue's
 current use of the flow is limited to account authentication and account-status
 checks; it does not currently invoke link-unrestriction, torrent, streaming, or
 download-management endpoints.

@@ -8,7 +8,7 @@ SIMULATOR_NAME="${IOS_SIMULATOR_NAME:-}"
 SIMULATOR_UDID="${IOS_SIMULATOR_UDID:-}"
 IOS_DEVICE_CLASS="${IOS_DEVICE_CLASS:-latest-phone}"
 IOS_RESOLVER_SCRIPT="$ROOT_DIR/scripts/resolve-ios-simulator.py"
-BUNDLE_ID="app.debridhub.ios"
+BUNDLE_ID="com.utkudemir.cue"
 
 if [[ -z "${JAVA_HOME:-}" || ! -x "$JAVA_HOME/bin/java" ]]; then
   export JAVA_HOME="$(/usr/libexec/java_home -v 21 2>/dev/null)"
@@ -61,8 +61,8 @@ if [[ -n "$SIMULATOR_UDID" ]]; then
 fi
 
 xcodebuild \
-  -project "$ROOT_DIR/iosApp/DebridHubHost.xcodeproj" \
-  -scheme DebridHubHost \
+  -project "$ROOT_DIR/iosApp/CueHost.xcodeproj" \
+  -scheme CueHost \
   -configuration Debug \
   -destination "$DESTINATION" \
   -destination-timeout "$IOS_TEST_DESTINATION_TIMEOUT" \

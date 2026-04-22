@@ -15,7 +15,7 @@
     <string name="account_username">Nom d’utilisateur : %1$s</string>
     <string name="common_actions">Actions</string>
     <string name="common_active">Actif</string>
-    <string name="common_app_name">DebridHub</string>
+    <string name="common_app_name">Cue</string>
     <string name="common_back">Retour</string>
     <string name="common_cancel_authorization">Annuler l’autorisation</string>
     <string name="common_connect_real_debrid">Connecter Real-Debrid</string>
@@ -59,27 +59,27 @@
     <string name="onboarding_before_connect_step_1">1. Touchez Connecter Real-Debrid pour demander un code d’appareil.</string>
     <string name="onboarding_before_connect_step_2">2. Copiez le code si vous le souhaitez, puis approuvez l’appareil sur Real-Debrid.</string>
     <string name="onboarding_before_connect_step_3">3. Si l’ouverture du navigateur est interrompue, utilisez Ouvrir la page d’autorisation ci-dessous.</string>
-    <string name="onboarding_before_connect_step_4">4. Revenez ici pendant que DebridHub attend la confirmation.</string>
+    <string name="onboarding_before_connect_step_4">4. Revenez ici pendant que Cue attend la confirmation.</string>
     <string name="onboarding_before_connect_step_5">Vous pouvez d’abord ouvrir le Centre de confiance si vous souhaitez examiner la confidentialité, la sécurité, les diagnostics et les détails de conformité.</string>
     <string name="onboarding_before_connect_title">Avant de vous connecter</string>
     <string name="onboarding_direct_verification_url">URL directe de vérification : %1$s</string>
     <string name="onboarding_enter_code">Saisissez ce code sur Real-Debrid.</string>
     <string name="onboarding_finish_authorization_title">Terminer l’autorisation</string>
-    <string name="onboarding_hero_body">DebridHub communique directement avec l’API officielle de Real-Debrid. Les jetons restent sur l’appareil et aucun backend n’intervient.</string>
+    <string name="onboarding_hero_body">Cue communique directement avec l’API officielle de Real-Debrid. Les jetons restent sur l’appareil et aucun backend n’intervient.</string>
     <string name="onboarding_hero_title">Suivez votre abonnement Real-Debrid et renouvelez-le avant son expiration.</string>
     <string name="onboarding_notifications_already_enabled">Les notifications sont déjà activées sur cet appareil.</string>
-    <string name="onboarding_notifications_disabled_help">Les notifications sont actuellement désactivées pour DebridHub. Vous pouvez réessayer la demande d’autorisation ou réactiver les alertes dans les réglages du système.</string>
+    <string name="onboarding_notifications_disabled_help">Les notifications sont actuellement désactivées pour Cue. Vous pouvez réessayer la demande d’autorisation ou réactiver les alertes dans les réglages du système.</string>
     <string name="onboarding_notifications_later">Vous pouvez activer les notifications maintenant ou plus tard. Les alertes de rappel commenceront une fois votre compte connecté.</string>
     <string name="onboarding_polling_until">Vérification toutes les %1$ss jusqu’à %2$s</string>
     <string name="onboarding_verification_url">URL de vérification : %1$s</string>
-    <string name="onboarding_waiting_for_approval">En attente de l’approbation de Real-Debrid. Après avoir approuvé l’appareil, revenez ici et DebridHub terminera la connexion automatiquement.</string>
+    <string name="onboarding_waiting_for_approval">En attente de l’approbation de Real-Debrid. Après avoir approuvé l’appareil, revenez ici et Cue terminera la connexion automatiquement.</string>
     <plurals name="reminders_day_count">
         <item quantity="one">%1$s jour</item>
         <item quantity="other">%1$s jours</item>
     </plurals>
     <string name="reminders_days_before_expiry">Jours avant l’expiration</string>
     <string name="reminders_enable">Activer les rappels</string>
-    <string name="reminders_local_schedule_intro">DebridHub programmera ces notifications locales sur cet appareil :</string>
+    <string name="reminders_local_schedule_intro">Cue programmera ces notifications locales sur cet appareil :</string>
     <string name="reminders_no_future_planned">Aucun rappel futur n’est prévu pour le moment. Cela peut arriver si la date d’expiration est très proche, déjà passée ou si les fenêtres de rappel choisies sont déjà écoulées.</string>
     <string name="reminders_notification_expired_yesterday">Votre abonnement Real-Debrid a expiré hier</string>
     <plurals name="reminders_notification_expires_in">
@@ -87,7 +87,7 @@
         <item quantity="other">Votre abonnement Real-Debrid expire dans %1$s jours</item>
     </plurals>
     <string name="reminders_notification_expires_today">Votre abonnement Real-Debrid expire aujourd’hui</string>
-    <string name="reminders_notifications_disabled">Des rappels sont prévus, mais les notifications sont désactivées pour DebridHub. Réactivez-les dans les réglages du système si vous voulez recevoir ces alertes.</string>
+    <string name="reminders_notifications_disabled">Des rappels sont prévus, mais les notifications sont désactivées pour Cue. Réactivez-les dans les réglages du système si vous voulez recevoir ces alertes.</string>
     <string name="reminders_notify_after_expiry">Notifier après l’expiration</string>
     <string name="reminders_notify_on_expiry">Notifier le jour de l’expiration</string>
     <string name="reminders_planned_times">Heures de rappel prévues :</string>
@@ -99,15 +99,15 @@
     <string name="reminders_turned_off">Les rappels sont actuellement désactivés.</string>
     <string name="trust_center_about_line_1">Le périmètre actuel est volontairement restreint : authentification du compte, lecture du statut du compte, planification locale des rappels et export local des diagnostics.</string>
     <string name="trust_center_about_line_2">L’app n’implémente actuellement ni débridage, ni téléchargements, ni gestion de torrents, ni streaming, ni partage de liens générés, ni gestion multi-utilisateur.</string>
-    <string name="trust_center_about_line_3">DebridHub utilise les endpoints officiels de l’API Real-Debrid et le flux d’authentification par appareil documenté. Les utilisateurs restent responsables du respect des Conditions et des règles de compte de Real-Debrid.</string>
+    <string name="trust_center_about_line_3">Cue utilise les endpoints officiels de l’API Real-Debrid et le flux d’authentification par appareil documenté. Les utilisateurs restent responsables du respect des Conditions et des règles de compte de Real-Debrid.</string>
     <string name="trust_center_about_title">À propos et conformité</string>
     <string name="trust_center_diagnostics_line_1">L’export des diagnostics inclut actuellement la version de l’app, la version de l’OS, l’horodatage de la dernière synchronisation, l’état d’expiration du compte et quelques indicateurs d’exécution non sensibles.</string>
     <string name="trust_center_diagnostics_line_2">L’export des diagnostics exclut les jetons d’accès, les jetons de rafraîchissement, les secrets client, le nom d’utilisateur, l’adresse e-mail et l’historique complet du compte.</string>
     <string name="trust_center_diagnostics_title">Diagnostics</string>
     <string name="trust_center_hero_body">Il s’agit d’un texte produit dans l’app basé sur l’implémentation actuelle, pas d’une couche marketing ni d’une vue web.</string>
-    <string name="trust_center_hero_title">Voyez exactement comment DebridHub gère l’authentification, le stockage, les diagnostics et les limites fonctionnelles.</string>
+    <string name="trust_center_hero_title">Voyez exactement comment Cue gère l’authentification, le stockage, les diagnostics et les limites fonctionnelles.</string>
     <string name="trust_center_preview_unavailable">L’aperçu des diagnostics n’est pas encore disponible.</string>
-    <string name="trust_center_privacy_line_1">DebridHub n’a pas de backend. L’app communique directement avec Real-Debrid depuis votre appareil.</string>
+    <string name="trust_center_privacy_line_1">Cue n’a pas de backend. L’app communique directement avec Real-Debrid depuis votre appareil.</string>
     <string name="trust_center_privacy_line_2">Il n’y a ni SDK analytique, ni pixel de suivi, ni service de rapport de crash, ni synchronisation distante de compte dans l’app actuelle.</string>
     <string name="trust_center_privacy_line_3">Les notifications de rappel sont locales à cet appareil et sont planifiées à partir de l’état du compte stocké localement.</string>
     <string name="trust_center_privacy_line_4">L’export des diagnostics est manuel. Rien n’est envoyé nulle part, sauf si vous partagez explicitement le fichier exporté.</string>
@@ -115,6 +115,6 @@
     <string name="trust_center_security_line_1">L’authentification utilise le flux officiel OAuth2 Device Flow de Real-Debrid plutôt qu’une collecte de mot de passe.</string>
     <string name="trust_center_security_line_2_android">Android stocke l’état d’authentification avec EncryptedSharedPreferences.</string>
     <string name="trust_center_security_line_2_ios">iOS stocke l’état d’authentification dans le Trousseau et migre l’ancien état NSUserDefaults lors de la première lecture.</string>
-    <string name="trust_center_security_line_3">Se déconnecter efface l’état d’authentification enregistré et annule les rappels. DebridHub n’a pas besoin d’un serveur compagnon pour fonctionner.</string>
+    <string name="trust_center_security_line_3">Se déconnecter efface l’état d’authentification enregistré et annule les rappels. Cue n’a pas besoin d’un serveur compagnon pour fonctionner.</string>
     <string name="trust_center_security_title">Sécurité</string>
 </resources>
