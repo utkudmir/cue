@@ -10,7 +10,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/verify-rc.yml
+      - .github/workflows/**
       - .detekt.yml
       - .swiftlint.yml
       - localization/**
@@ -31,7 +31,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/verify-rc.yml
+      - .github/workflows/**
       - .detekt.yml
       - .swiftlint.yml
       - localization/**
@@ -94,7 +94,6 @@ jobs:
         with:
           script: |
             const triggerExactMatches = new Set([
-              '.github/workflows/verify-rc.yml',
               '.detekt.yml',
               '.swiftlint.yml',
               'Makefile',
@@ -107,6 +106,7 @@ jobs:
             ])
 
             const triggerPrefixMatches = [
+              '.github/workflows/',
               'localization/',
               'gradle/',
               'ci/',
@@ -135,7 +135,6 @@ jobs:
             ]
 
             const ciOnlyExactMatches = new Set([
-              '.github/workflows/verify-rc.yml',
               'docs/release-gate.md',
               'docs/appstore-review-checklist.md',
               'docs/localization.md',
