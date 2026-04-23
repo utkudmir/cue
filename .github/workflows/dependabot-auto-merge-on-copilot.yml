@@ -1,9 +1,6 @@
-name: dependabot-auto-merge-on-copilot
+name: dependabot-auto-merge
 
 on:
-  pull_request_review:
-    types:
-      - submitted
   workflow_run:
     workflows:
       - verification
@@ -22,11 +19,10 @@ permissions:
 jobs:
   enable-auto-merge:
     if: |
-      (github.event_name == 'pull_request_review' && contains(fromJSON('["app/dependabot","dependabot[bot]","dependabot"]'), github.event.pull_request.user.login) && !github.event.pull_request.draft) ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success')
+      github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     steps:
-      - name: Merge Dependabot PR after Copilot approval and verification success
+      - name: Merge Dependabot PR after verification success
         uses: actions/github-script@v9
         with:
           script: |
@@ -34,17 +30,12 @@ jobs:
             const repo = context.repo.repo
             const dependabotLogins = new Set(['app/dependabot', 'dependabot[bot]', 'dependabot'])
 
-            let pull_number
-            if (context.eventName === 'pull_request_review') {
-              pull_number = context.payload.pull_request.number
-            } else {
-              const pullRequests = context.payload.workflow_run.pull_requests || []
-              if (pullRequests.length === 0) {
-                core.info('No pull request attached to this verification workflow run.')
-                return
-              }
-              pull_number = pullRequests[0].number
+            const pullRequests = context.payload.workflow_run.pull_requests || []
+            if (pullRequests.length === 0) {
+              core.info('No pull request attached to this verification workflow run.')
+              return
             }
+            const pull_number = pullRequests[0].number
 
             const { data: pullRequest } = await github.rest.pulls.get({
               owner,
@@ -59,25 +50,6 @@ jobs:
 
             if (pullRequest.state !== 'open' || pullRequest.draft) {
               core.info(`PR #${pull_number} is not mergeable because it is closed or draft.`)
-              return
-            }
-
-            const reviews = await github.paginate(github.rest.pulls.listReviews, {
-              owner,
-              repo,
-              pull_number,
-              per_page: 100
-            })
-
-            const hasCopilotApproval = reviews.some((review) => {
-              const login = review.user?.login || ''
-              const isCopilotActor = /copilot/i.test(login)
-              const isApprovalOrComment = review.state === 'APPROVED' || review.state === 'COMMENTED'
-              return isCopilotActor && isApprovalOrComment
-            })
-
-            if (!hasCopilotApproval) {
-              core.info(`PR #${pull_number} does not yet have a Copilot approval.`)
               return
             }
 
@@ -109,7 +81,7 @@ jobs:
                 repo,
                 issue_number: pull_number,
                 body: [
-                  'Automated note: Copilot approved this Dependabot PR and verification passed, but the final merge attempt failed.',
+                  'Automated note: this Dependabot PR passed verification, but the final merge attempt failed.',
                   `GitHub API error: ${error.message}`
                 ].join('\n')
               })
