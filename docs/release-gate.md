@@ -191,8 +191,9 @@ the sign-off table. Do not commit evidence files to git.
 
 ## Sign-Off (Single Owner)
 
-Only the configured `release-manager` reviewer can approve release sign-off.
+Only the configured release owner can approve release sign-off.
 
+The configured owner is loaded from `ci/device-pool.yml` (`defaults.signoff_owner`).
 If a different reviewer name appears in sign-off, decision is automatically
 `NO-GO`.
 
@@ -209,7 +210,7 @@ Required fields:
 
 | candidate_commit | verify_rc_run_id | reviewer | date_utc | decision | notes |
 | --- | --- | --- | --- | --- | --- |
-| `<sha>` | `<run_id>` | `release-manager` | `<YYYY-MM-DDTHH:MM:SSZ>` | `GO/NO-GO` | `<policy + App Store notes + evidence paths>` |
+| `<sha>` | `<run_id>` | `utkudmir` | `<YYYY-MM-DDTHH:MM:SSZ>` | `GO/NO-GO` | `<policy + App Store notes + evidence paths>` |
 
 ## Tagging and Release Notes
 
