@@ -182,7 +182,7 @@ tasks.register<JacocoCoverageVerification>("jacocoDebugUnitTestCoverageVerificat
 dependencies {
     implementation(project(":shared"))
 
-    val composeBom = platform("androidx.compose:compose-bom:2026.04.01")
+    val composeBom = platform("androidx.compose:compose-bom:2026.05.00")
 
     implementation(composeBom)
     androidTestImplementation(composeBom)
