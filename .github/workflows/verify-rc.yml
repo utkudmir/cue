@@ -11,6 +11,7 @@ on:
       - main
     paths:
       - .github/workflows/**
+      - .github/dependabot.yml
       - .detekt.yml
       - .swiftlint.yml
       - localization/**
@@ -33,6 +34,7 @@ on:
       - main
     paths:
       - .github/workflows/**
+      - .github/dependabot.yml
       - .detekt.yml
       - .swiftlint.yml
       - localization/**
@@ -98,6 +100,7 @@ jobs:
             const triggerExactMatches = new Set([
               '.detekt.yml',
               '.swiftlint.yml',
+              '.github/dependabot.yml',
               'Makefile',
               'build.gradle.kts',
               'settings.gradle.kts',
@@ -141,6 +144,7 @@ jobs:
               'docs/release-gate.md',
               'docs/appstore-review-checklist.md',
               'docs/localization.md',
+              '.github/dependabot.yml',
               'scripts/verify-rc.sh',
               'scripts/verify-android-emulator.sh',
               'scripts/test-ios-sim.sh',
