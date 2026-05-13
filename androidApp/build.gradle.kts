@@ -204,7 +204,7 @@ dependencies {
     implementation("io.ktor:ktor-client-logging:3.4.3")
     implementation("io.ktor:ktor-client-okhttp:3.4.3")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.4.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0-0.6.x-compat")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 
@@ -214,7 +214,7 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.ktor:ktor-client-mock:3.4.3")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
 
     androidTestImplementation("androidx.test:core-ktx:1.7.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
