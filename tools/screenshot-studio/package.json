@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
-    "next": "16.2.6",
+    "next": "16.2.7",
     "puppeteer": "^24.43.1",
-    "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
