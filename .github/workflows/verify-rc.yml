@@ -90,7 +90,7 @@ jobs:
       ios_matrix: ${{ steps.plan.outputs.ios_matrix }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Detect verification-relevant changes
         id: relevant-changes
@@ -256,7 +256,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21 (cached)
         if: github.event_name != 'pull_request'
@@ -301,7 +301,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21 (cached)
         if: github.event_name != 'pull_request'
@@ -348,7 +348,7 @@ jobs:
       matrix: ${{ fromJSON(needs['plan-verification'].outputs.android_matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21 (cached)
         if: github.event_name != 'pull_request'
@@ -454,7 +454,7 @@ jobs:
       ANDROID_PACKAGE: com.utkudemir.cue
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21 (cached)
         if: github.event_name != 'pull_request'
@@ -530,7 +530,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install SwiftLint
         shell: bash
@@ -566,7 +566,7 @@ jobs:
       matrix: ${{ fromJSON(needs['plan-verification'].outputs.ios_matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21 (cached)
         if: github.event_name != 'pull_request'
@@ -622,7 +622,7 @@ jobs:
       matrix: ${{ fromJSON(needs['plan-verification'].outputs.ios_matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21 (cached)
         if: github.event_name != 'pull_request'
@@ -732,7 +732,7 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Run compliance and sign-off gate
         shell: bash
