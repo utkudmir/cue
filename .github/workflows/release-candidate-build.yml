@@ -35,7 +35,7 @@ jobs:
     environment: production-play-store
     steps:
       - name: Checkout approved tag
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate-input.outputs.release_tag }}
 
@@ -98,7 +98,7 @@ jobs:
     environment: production-app-store
     steps:
       - name: Checkout approved tag
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate-input.outputs.release_tag }}
 
