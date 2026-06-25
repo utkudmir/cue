@@ -78,7 +78,7 @@ kotlin {
             dependencies {
                 implementation("io.ktor:ktor-client-okhttp:3.5.0")
                 implementation("androidx.security:security-crypto:1.1.0-alpha06")
-                implementation("androidx.core:core-ktx:1.18.0")
+                implementation("androidx.core:core-ktx:1.19.0")
             }
         }
         val iosMain by creating {
