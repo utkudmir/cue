@@ -86,7 +86,7 @@ jobs:
           (cd "$PWD/build/release-candidate/android" && shasum -a 256 cue-release.aab > SHA256SUMS)
 
       - name: Upload Android candidate artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-candidate-${{ inputs.release_tag }}-android
           path: build/release-candidate/android/
@@ -187,7 +187,7 @@ jobs:
           (cd "$PWD/build/release-candidate/ios" && shasum -a 256 cue-release.ipa > SHA256SUMS)
 
       - name: Upload iOS candidate artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-candidate-${{ inputs.release_tag }}-ios
           path: build/release-candidate/ios/

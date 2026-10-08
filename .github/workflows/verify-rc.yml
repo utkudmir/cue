@@ -283,7 +283,7 @@ jobs:
 
       - name: Upload shared diagnostics
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: verification-diagnostics-shared
           path: |
@@ -326,7 +326,7 @@ jobs:
 
       - name: Upload Android static analysis diagnostics
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: verification-diagnostics-android-static-analysis
           path: |
@@ -418,7 +418,7 @@ jobs:
 
       - name: Upload Android debug APK for launch smoke
         if: success()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: android-debug-apk-${{ matrix.slug }}
           path: androidApp/build/outputs/apk/debug/androidApp-debug.apk
@@ -427,7 +427,7 @@ jobs:
 
       - name: Upload Android automated test diagnostics
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: verification-diagnostics-android-tests-${{ matrix.slug }}
           path: |
@@ -515,7 +515,7 @@ jobs:
 
       - name: Upload Android launch smoke diagnostics
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: verification-diagnostics-android-smoke-${{ matrix.slug }}
           path: build/rc-verify/android/${{ matrix.slug }}/
@@ -546,7 +546,7 @@ jobs:
 
       - name: Upload iOS static analysis diagnostics
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: verification-diagnostics-ios-static-analysis
           path: .swiftlint.yml
@@ -591,7 +591,7 @@ jobs:
 
       - name: Upload iOS build products for launch smoke
         if: success()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: ios-build-products-${{ matrix.slug }}
           path: build/ios-derived-data/Build/Products/Debug-iphonesimulator/
@@ -600,7 +600,7 @@ jobs:
 
       - name: Upload iOS automated test diagnostics
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: verification-diagnostics-ios-tests-${{ matrix.slug }}
           path: |
@@ -653,7 +653,7 @@ jobs:
 
       - name: Upload iOS launch smoke diagnostics
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: verification-diagnostics-ios-smoke-${{ matrix.slug }}
           path: |
@@ -744,7 +744,7 @@ jobs:
 
       - name: Upload gate diagnostics
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: verification-diagnostics-gate
           path: build/rc-verify/
