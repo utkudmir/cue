@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "0570C889F39C86AB1D0C2285"
-               BuildableName = "CueHost.app"
+               BuildableName = "Cue.app"
                BlueprintName = "CueHost"
                ReferencedContainer = "container:CueHost.xcodeproj">
             </BuildableReference>
@@ -47,7 +47,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0570C889F39C86AB1D0C2285"
-            BuildableName = "CueHost.app"
+            BuildableName = "Cue.app"
             BlueprintName = "CueHost"
             ReferencedContainer = "container:CueHost.xcodeproj">
          </BuildableReference>
@@ -83,7 +83,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0570C889F39C86AB1D0C2285"
-            BuildableName = "CueHost.app"
+            BuildableName = "Cue.app"
             BlueprintName = "CueHost"
             ReferencedContainer = "container:CueHost.xcodeproj">
          </BuildableReference>
@@ -102,7 +102,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0570C889F39C86AB1D0C2285"
-            BuildableName = "CueHost.app"
+            BuildableName = "Cue.app"
             BlueprintName = "CueHost"
             ReferencedContainer = "container:CueHost.xcodeproj">
          </BuildableReference>

@@ -21,6 +21,7 @@ settings:
 targets:
   CueHost:
     type: application
+    productName: Cue
     platform: iOS
     deploymentTarget: "17.0"
     sources:
