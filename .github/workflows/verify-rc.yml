@@ -25,7 +25,6 @@ on:
       - shared/**
       - androidApp/**
       - iosApp/**
-      - tools/screenshot-studio/**
       - docs/release-gate.md
       - docs/appstore-review-checklist.md
       - docs/localization.md
@@ -48,7 +47,6 @@ on:
       - shared/**
       - androidApp/**
       - iosApp/**
-      - tools/screenshot-studio/**
       - docs/release-gate.md
       - docs/appstore-review-checklist.md
       - docs/localization.md
@@ -118,8 +116,7 @@ jobs:
               'scripts/',
               'shared/',
               'androidApp/',
-              'iosApp/',
-              'tools/screenshot-studio/'
+              'iosApp/'
             ]
 
             const fullExactMatches = new Set([
@@ -154,8 +151,7 @@ jobs:
             ])
 
             const ciOnlyPrefixMatches = [
-              '.github/workflows/',
-              'tools/screenshot-studio/'
+              '.github/workflows/'
             ]
 
             const matches = (file, exactSet, prefixes) => exactSet.has(file) || prefixes.some((prefix) => file.startsWith(prefix))

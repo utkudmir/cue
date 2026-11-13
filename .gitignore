@@ -23,8 +23,6 @@ vendor/bundle/
 # Local JS tooling
 node_modules/
 .next/
-tools/screenshot-studio/node_modules/
-tools/screenshot-studio/.next/
 
 # Local env
 .env

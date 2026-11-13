@@ -242,6 +242,10 @@ Release process uses semantic version tags (`vMAJOR.MINOR.PATCH`) and
 Brand assets live under `branding/` and official store metadata lives under
 `fastlane/`.
 
+The store screenshot generator is maintained outside this repository and used
+only when refreshing images. See [branding/README.md](branding/README.md) for
+the external-tool workflow.
+
 Please avoid adding features that:
 
 - manage accounts for other people

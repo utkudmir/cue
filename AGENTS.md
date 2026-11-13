@@ -4,6 +4,7 @@
 - Active Gradle modules are only `:shared` and `:androidApp` (`settings.gradle.kts`).
 - iOS project files are generated from `iosApp/project.yml` via `xcodegen` (`scripts/generate-ios-project.sh`). Treat `project.yml` as source of truth; regenerate after iOS project config edits.
 - If docs and code disagree, trust executable sources (`Makefile`, Gradle files, scripts, code).
+- Keep screenshot-generator source code and its dependencies outside this repo. Use an external tool only when refreshing store assets; keep captures and exported images here.
 
 ## Real Entrypoints / Wiring
 - Android runtime path: `androidApp MainActivity.kt` -> `buildAndroidAppGraph` (`AndroidAppGraph.kt`) -> `CueViewModel`.

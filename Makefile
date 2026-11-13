@@ -16,7 +16,7 @@ help:
 	@echo "make ios-build    - Build the iOS simulator app"
 	@echo "make ios-test     - Run the iOS XCTest suite on simulator"
 	@echo "make ios-run      - Build, install, and launch the iOS simulator app"
-	@echo "make screenshot-refresh - Capture app scenes and regenerate store screenshots"
+	@echo "make screenshot-refresh - Capture/export screenshots with external CUE_SCREENSHOT_STUDIO_DIR"
 	@echo "make verify-rc    - Run release-candidate verification gate"
 	@echo "make provision-devices - Provision simulators/AVDs from device pool"
 	@echo "make security-scan-secrets - Scan tracked files for leaked secrets"
