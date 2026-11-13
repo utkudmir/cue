@@ -14,6 +14,7 @@ build/
 # Xcode user data / derived artifacts
 iosApp/CueHost.xcodeproj/project.xcworkspace/xcuserdata/
 iosApp/CueHost.xcodeproj/xcuserdata/
+iosApp/CueHost.xcodeproj/xcshareddata/xcodecloud/
 *.xcuserstate
 
 # Ruby / fastlane local installs
@@ -23,8 +24,6 @@ vendor/bundle/
 # Local JS tooling
 node_modules/
 .next/
-tools/screenshot-studio/node_modules/
-tools/screenshot-studio/.next/
 
 # Local env
 .env

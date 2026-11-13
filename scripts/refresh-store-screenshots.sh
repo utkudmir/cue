@@ -8,7 +8,13 @@ ANDROID_APK_PATH="$ROOT_DIR/androidApp/build/outputs/apk/debug/androidApp-debug.
 
 IOS_CAPTURE_DIR="$ROOT_DIR/branding/screenshots/source/captures/ios/iphone"
 ANDROID_CAPTURE_DIR="$ROOT_DIR/branding/screenshots/source/captures/android/phone"
-STUDIO_DIR="$ROOT_DIR/tools/screenshot-studio"
+STUDIO_DIR="${CUE_SCREENSHOT_STUDIO_DIR:-}"
+
+if [[ -z "$STUDIO_DIR" || ! -f "$STUDIO_DIR/package.json" || ! -f "$STUDIO_DIR/export-assets.mjs" ]]; then
+  echo "Set CUE_SCREENSHOT_STUDIO_DIR to the external Cue Screenshot Studio directory." >&2
+  echo 'Usage: CUE_SCREENSHOT_STUDIO_DIR=/path/to/cue-screenshot-studio make screenshot-refresh' >&2
+  exit 1
+fi
 
 resolve_booted_ios_udid() {
   xcrun simctl list devices booted | awk '/\(Booted\)/ { if (match($0, /\(([0-9A-F-]+)\)/)) { print substr($0, RSTART + 1, RLENGTH - 2); exit } }'

@@ -10,6 +10,7 @@
 		1E906C17122BA6BEF02535CD /* IOSAppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5911D54BF8D2F54D053F38F0 /* IOSAppViewModel.swift */; };
 		2F900EF6F2DAF750E25B60BF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 972A842B5589E8C944F8CFE0 /* LaunchScreen.storyboard */; };
 		31596CBD388F7E75613CF9BC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 388E64354C3E0C2C923C24D6 /* PrivacyInfo.xcprivacy */; };
+		31C8501FE32050C56AB15B9B /* SecureTokenStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63CB04EABD6164ED78A2B122 /* SecureTokenStoreTests.swift */; };
 		39C5F5C860AC3448F5E98F9D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 485F852B1E56255CFA7C89CB /* Assets.xcassets */; };
 		463142D5F67742D98153FB2B /* Shared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D3B0C7C5E834945E9CF5097F /* Shared.framework */; };
 		5F7AF24D6C02422BA6C25BF9 /* Shared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = D3B0C7C5E834945E9CF5097F /* Shared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -60,17 +61,18 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		017B62B3A95B7B4FAB3856DD /* Cue.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cue.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		05158355823710178475522B /* AppL10n.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppL10n.generated.swift; sourceTree = "<group>"; };
 		0B34B3DB4A4312CDBB0B3D1B /* LocalizationSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationSmokeTests.swift; sourceTree = "<group>"; };
 		1A5BE667F812F483E419E2DB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		2A55812557C1F982932DA7CD /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 		355F2B28B54A0F54D87E8E31 /* CueApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CueApp.swift; sourceTree = "<group>"; };
-		37DBA7B55B10D0255AA9D4DF /* CueHost.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CueHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		388E64354C3E0C2C923C24D6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		428BE266FB474FF7974F1A12 /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		485F852B1E56255CFA7C89CB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5911D54BF8D2F54D053F38F0 /* IOSAppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAppViewModel.swift; sourceTree = "<group>"; };
 		5E5351C7571A112F612587E3 /* CueScreenshotScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CueScreenshotScene.swift; sourceTree = "<group>"; };
+		63CB04EABD6164ED78A2B122 /* SecureTokenStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureTokenStoreTests.swift; sourceTree = "<group>"; };
 		7FFFD57AE483F86CA25E027A /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		83FBE97B16DCD9E5C07556B4 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		972A842B5589E8C944F8CFE0 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -105,6 +107,7 @@
 			children = (
 				A5AF2A3B15806D3888289828 /* IOSAppViewModelTests.swift */,
 				0B34B3DB4A4312CDBB0B3D1B /* LocalizationSmokeTests.swift */,
+				63CB04EABD6164ED78A2B122 /* SecureTokenStoreTests.swift */,
 			);
 			path = CueHostTests;
 			sourceTree = "<group>";
@@ -162,7 +165,7 @@
 		E723C37D319A6C82D769922E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				37DBA7B55B10D0255AA9D4DF /* CueHost.app */,
+				017B62B3A95B7B4FAB3856DD /* Cue.app */,
 				DA98B31743EA224FA3080924 /* CueHostTests.xctest */,
 			);
 			name = Products;
@@ -189,7 +192,7 @@
 			packageProductDependencies = (
 			);
 			productName = CueHost;
-			productReference = 37DBA7B55B10D0255AA9D4DF /* CueHost.app */;
+			productReference = 017B62B3A95B7B4FAB3856DD /* Cue.app */;
 			productType = "com.apple.product-type.application";
 		};
 		EBA0FCECAB0C9CFC00758C4B /* CueHostTests */ = {
@@ -310,6 +313,7 @@
 			files = (
 				FFFE036EC81B2D959442071E /* IOSAppViewModelTests.swift in Sources */,
 				838A62C8398EF646667F7FB3 /* LocalizationSmokeTests.swift in Sources */,
+				31C8501FE32050C56AB15B9B /* SecureTokenStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

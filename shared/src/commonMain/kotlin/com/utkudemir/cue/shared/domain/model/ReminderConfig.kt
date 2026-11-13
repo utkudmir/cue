@@ -1,5 +1,7 @@
 package com.utkudemir.cue.shared.domain.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Configuration for reminder scheduling.
  *
@@ -14,6 +16,7 @@ package com.utkudemir.cue.shared.domain.model
  *   the subscription has expired. This can be useful to alert users that
  *   Real‑Debrid has stopped working in their other apps.
  */
+@Serializable
 data class ReminderConfig(
     val enabled: Boolean = true,
     val daysBefore: Set<Int> = setOf(7, 3, 1),

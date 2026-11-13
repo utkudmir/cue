@@ -2,6 +2,7 @@ package com.utkudemir.cue.shared.platform
 
 import com.utkudemir.cue.shared.domain.model.StoredAuthState
 import kotlinx.cinterop.BetaInteropApi
+import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCObjectVar
 import kotlinx.cinterop.addressOf
@@ -17,12 +18,16 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import platform.CoreFoundation.CFDictionaryRef
+import platform.CoreFoundation.CFDictionaryCreateMutable
+import platform.CoreFoundation.CFDictionarySetValue
 import platform.CoreFoundation.CFRelease
+import platform.CoreFoundation.CFRetain
+import platform.CoreFoundation.CFStringRef
 import platform.CoreFoundation.kCFBooleanTrue
+import platform.CoreFoundation.kCFTypeDictionaryKeyCallBacks
+import platform.CoreFoundation.kCFTypeDictionaryValueCallBacks
 import platform.Foundation.CFBridgingRetain
 import platform.Foundation.NSData
-import platform.Foundation.NSMutableDictionary
-import platform.Foundation.NSCopyingProtocol
 import platform.Foundation.NSString
 import platform.Foundation.NSStringEncoding
 import platform.Foundation.NSUserDefaults
@@ -48,7 +53,8 @@ import platform.Security.kSecValueData
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 class SecureTokenStoreImpl(
     private val defaults: NSUserDefaults = NSUserDefaults.standardUserDefaults,
-    private val json: Json = Json { ignoreUnknownKeys = true }
+    private val json: Json = Json { ignoreUnknownKeys = true },
+    private val keychainService: String = KEYCHAIN_SERVICE
 ) : SecureTokenStore {
     override suspend fun read(): StoredAuthState? = withContext(Dispatchers.Default) {
         readKeychainValue()?.let { stored ->
@@ -94,7 +100,7 @@ class SecureTokenStoreImpl(
     private fun readKeychainValue(): String? = memScoped {
         withKeychainDictionary(
                 kSecClass to kSecClassGenericPassword,
-                kSecAttrService to KEYCHAIN_SERVICE,
+                kSecAttrService to keychainService,
                 kSecAttrAccount to KEYCHAIN_ACCOUNT,
                 kSecReturnData to kCFBooleanTrue,
                 kSecMatchLimit to kSecMatchLimitOne
@@ -118,7 +124,7 @@ class SecureTokenStoreImpl(
         val data = raw.toNSData()
         val updateStatus = withKeychainDictionary(
             kSecClass to kSecClassGenericPassword,
-            kSecAttrService to KEYCHAIN_SERVICE,
+            kSecAttrService to keychainService,
             kSecAttrAccount to KEYCHAIN_ACCOUNT
         ) { identityQuery ->
             withKeychainDictionary(
@@ -145,7 +151,7 @@ class SecureTokenStoreImpl(
     private fun deleteKeychainValue() {
         val status = withKeychainDictionary(
             kSecClass to kSecClassGenericPassword,
-            kSecAttrService to KEYCHAIN_SERVICE,
+            kSecAttrService to keychainService,
             kSecAttrAccount to KEYCHAIN_ACCOUNT
         ) { identityQuery ->
             SecItemDelete(identityQuery)
@@ -162,7 +168,7 @@ class SecureTokenStoreImpl(
     private fun addKeychainValue(data: NSData) {
         val addStatus = withKeychainDictionary(
             kSecClass to kSecClassGenericPassword,
-            kSecAttrService to KEYCHAIN_SERVICE,
+            kSecAttrService to keychainService,
             kSecAttrAccount to KEYCHAIN_ACCOUNT,
             kSecAttrAccessible to kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
             kSecValueData to data
@@ -196,26 +202,33 @@ private fun NSData.toUtf8String(): String? =
 private const val NS_UTF8_ENCODING: NSStringEncoding = 4u
 
 @OptIn(ExperimentalForeignApi::class)
-private fun keychainDictionary(vararg entries: Pair<Any?, Any?>): NSMutableDictionary {
-    val dictionary = NSMutableDictionary()
-    entries.forEach { (key, value) ->
-        val dictionaryKey = key as? NSCopyingProtocol ?: return@forEach
-        val dictionaryValue = value ?: return@forEach
-        dictionary.setObject(dictionaryValue, forKey = dictionaryKey)
-    }
-    return dictionary
-}
-
-@OptIn(ExperimentalForeignApi::class)
-private inline fun <T> withKeychainDictionary(
-    vararg entries: Pair<Any?, Any?>,
+internal inline fun <T> withKeychainDictionary(
+    vararg entries: Pair<CFStringRef?, Any?>,
     block: (CFDictionaryRef) -> T
 ): T {
-    val retainedDictionary = CFBridgingRetain(keychainDictionary(*entries))
-        ?: error("Unable to bridge iOS dictionary for Keychain access.")
+    val dictionary = CFDictionaryCreateMutable(
+        null,
+        entries.size.toLong(),
+        kCFTypeDictionaryKeyCallBacks.ptr,
+        kCFTypeDictionaryValueCallBacks.ptr
+    ) ?: error("Unable to create iOS dictionary for Keychain access.")
     return try {
-        block(retainedDictionary.reinterpret())
+        entries.forEach { (key, value) ->
+            val dictionaryKey = requireNotNull(key)
+            val dictionaryValue = requireNotNull(value)
+            // Security constants are already CF objects; Kotlin values need an ObjC bridge.
+            val retainedValue = when (dictionaryValue) {
+                is CPointer<*> -> CFRetain(dictionaryValue)
+                else -> CFBridgingRetain(dictionaryValue)
+            } ?: error("Unable to bridge iOS value for Keychain access.")
+            try {
+                CFDictionarySetValue(dictionary, dictionaryKey, retainedValue)
+            } finally {
+                CFRelease(retainedValue)
+            }
+        }
+        block(dictionary)
     } finally {
-        CFRelease(retainedDictionary)
+        CFRelease(dictionary)
     }
 }
